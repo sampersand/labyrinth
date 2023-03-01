@@ -1,9 +1,12 @@
 #include "princess.c"
 #include "value.c"
-#embed "foo"
+
 int main() {
 	char *input = strdup(
-"'10v\n"\
+"'1000000>.?.s,v\n"\
+"        ^}D{_1<"
+
+"'10Dv\n"\
 "v--<\n"\
 "v      v-----_1$-----<   factorial function\n"\
 "|      |             |\n"\

@@ -80,6 +80,7 @@ enum {
 };
 
 #define MAX_ARGC 4
+
 char *strchr(const char *c, int);
 static inline int arity(function f) {
 	if (strchr("0123456789.:;$-|><^v{}DdQU\"\'", f)) return 0;

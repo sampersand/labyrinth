@@ -1,4 +1,5 @@
 #include "value.h"
+#include <ctype.h>
 #include <string.h>
 
 const array *empty_array = 0;
@@ -13,9 +14,9 @@ array *aalloc(int amnt) {
 
 void afree(array *a) {
 	assert(a->rc);
-
-	if (!--a->rc)
-		free(a->items), free(a);
+	if (--a->rc) return;
+	free(a->items);
+	free(a);
 }
 
 int eql(VALUE l, VALUE r) {
@@ -35,30 +36,29 @@ integer parse_int(VALUE v) {
 	integer i = 0, tmp;
 	if (isint(v)) {
 		i = INT(v);
-		return '0' <= i && i <= '9' ? i - '0' : 0;
+		return isdigit(i) ? i-'0' : 0;
 	}
 
 	array *a = ARY(v);
-
-	int idx = 0, is_negative = 0;
+	int idx = 0, sign = 1;
 
 	if (eql(a->items[idx], i2v('-')))
-		is_negative = 1, idx++;
+		sign = -1, idx++;
 
-	while(1) {
+	while (idx < a->len) {
 		ensure(isint(a->items[idx]), "can only parse arrays of ints");
 		tmp = INT(a->items[idx++]);
 
-		if (tmp < '0' || '9' < tmp) break;
+		if (!isdigit(tmp)) break;
 		i = i*10 + (tmp - '0');
 	}
 
-	if (is_negative) i *= -1;
-	return i;
+	return i * sign;
 }
 
 void apush(array *a, VALUE v) {
-	if (a->len == a->cap) a->items = realloc(a->items, sizeof(VALUE) * (a->cap*=2));
+	if (a->len == a->cap)
+		a->items = realloc(a->items, sizeof(VALUE) * (a->cap*=2));
 	a->items[a->len++] = v;
 }
 
@@ -72,14 +72,16 @@ array *to_string(VALUE v) {
 
 	char buf[100]; // large enough
 	snprintf(buf, sizeof(buf), "%lld", INT(v));
+
 	array *a = aalloc(strlen(buf));
 	for (int i = 0; buf[i]; ++i)
 		a->items[a->len++] = i2v(buf[i]);
+
 	return a;
 }
 
 void print(VALUE v, FILE *f) {
-	if (isint(v)) {
+	if (isint(v))  {
 		fputc(INT(v), f);
 		return;
 	}
@@ -91,7 +93,7 @@ void print(VALUE v, FILE *f) {
 	}
 }
 
-void vdump(VALUE v, FILE *out) {
+void dump_value(VALUE v, FILE *out) {
 	if (isint(v)) {
 		fprintf(out, "%lld", INT(v));
 		return;
@@ -102,7 +104,7 @@ void vdump(VALUE v, FILE *out) {
 	const array *a = ARY(v);
 	for (int i = 0; i < a->len; ++i) {
 		if (i) fputs(", ", out);
-		vdump(a->items[i], out);
+		dump_value(a->items[i], out);
 	}
 
 	fputc(']', out);

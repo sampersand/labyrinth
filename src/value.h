@@ -58,7 +58,7 @@ integer parse_int(VALUE v);
 array *to_string(VALUE v);
 array *aalloc(int size);
 void afree(array *a);
-void vdump(VALUE v, FILE *f);
+void dump_value(VALUE v, FILE *f);
 void apush(array *a, VALUE v);
 void print(VALUE v, FILE *f);
 VALUE apop(array *a);

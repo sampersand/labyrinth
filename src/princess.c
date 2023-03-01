@@ -13,7 +13,7 @@ function **create_board(char *input) {
 		board[len++] = (function *) line;
 	}
 
-	return realloc(board, sizeof(function *) * len);
+	return realloc(board, sizeof(function*) * len);
 }
 
 princess new_princess(function **board) {
@@ -31,7 +31,7 @@ void free_princess(princess *p) {
 	free(p);
 }
 
-void pdump(const princess *p, FILE *out) {
+void dump(const princess *p, FILE *out) {
 	fprintf(out, "Princess(position=(%d,%d), velocity=(%d,%d), stack=[",
 		p->position.x, p->position.y,
 		p->velocity.x, p->velocity.y
@@ -39,7 +39,7 @@ void pdump(const princess *p, FILE *out) {
 
 	for (int i = 0; i < p->stack->len; ++i) {
 		if (i) fputs(", ", out);
-		vdump(p->stack->items[i], out);
+		dump_value(p->stack->items[i], out);
 	}
 
 	fputs("])", out);
@@ -85,7 +85,7 @@ static void _popn(princess *p, int n) {
 	drop(popn(p, n));
 }
 
-static VALUE parse_str(princess *p) {
+static VALUE scan_str(princess *p) {
 	array *a = aalloc(8);
 	char c;
 
@@ -97,22 +97,23 @@ static VALUE parse_str(princess *p) {
 	return a2v(a);
 }
 
-static VALUE pparse_int(princess *p) {
-	int is_negative = 0;
+static VALUE scan_int(princess *p) {
+	int sign = 1;
 	integer i = 0;
 
 	char c = move(p);
-	if (c == '-') is_negative = 1;
+	if (c == '-') sign = -1;
 	else if (!isdigit(c)) return 0;
 	else i = c - '0';
 
-	while (isdigit(c = move(p))) i = i*10 + (c - '0');
+	while (isdigit(c = move(p)))
+		i *= 10, i += c-'0';
 
-	if (c != '\0') unstep(p);
+	if (c) unstep(p);
 
-	if (is_negative) i *= -1;
-	return i2v(i);
+	return i2v(i * sign);
 }
+
 int run(princess *p, function f) {
 	int status = RUN_CONTINUE;
 	VALUE args[MAX_ARGC];
@@ -127,8 +128,8 @@ int run(princess *p, function f) {
 		push(p, i2v(f - '0'));
 		break;
 
-	case FSTR: push(p, parse_str(p)); break;
-	case FINT: push(p, pparse_int(p)); break;
+	case FSTR: push(p, scan_str(p)); break;
+	case FINT: push(p, scan_int(p)); break;
 	case FARY: die("todo: func for `[`");
 	case FARYEND: die("todo: func for `]`");
 
@@ -199,7 +200,7 @@ int run(princess *p, function f) {
 
 	case FDUMPQ:
 	case FDUMP:
-		pdump(p, stdout);
+		dump(p, stdout);
 		putchar('\n');
 		fflush(stdout);
 		if (f != FDUMPQ) break;
