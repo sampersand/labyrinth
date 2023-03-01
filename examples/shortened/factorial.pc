@@ -1,0 +1,29 @@
+1$>.?$:*$d1v
+  ^_>,NQj4-<
+
+explanation:
+
+1 pushes `1` (the accumulator) onto the stack
+$ swaps it and the number to get the factor of
+> sets the direction to right (for the part below; no op on first time)
+. duplicates the top number on the stack, and
+? checks to see if it's zero. if it is, (see below).
+: If it's not, duplicate the second-to-top element (ie the decrementing field) 
+* multiplies the current integer with the accumulator
+$ swaps them back so that the decrementing field is on top.
+1 pushes 1 on top (so we can subtract it later)
+v< set the direction to go left.
+4j (well, j4) jumps four places ahead (landing on the `_`)
+_ subtracts the 1 from the accumulator
+^> starts the sequence over again
+
+If it's falsey
+> changes the direction to right
+, pops the top element off (ie the decrementing field)
+N dumps the top element to stdout; integers are printed as-is
+Q exits with status code 0
+
+
+v    >,NQ
+>1$>.I$:v
+   ^_1$*<

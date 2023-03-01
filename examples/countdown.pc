@@ -1,0 +1,18 @@
+9--v       >---Q
+   |       |
+   >---.---I---v
+   |           |
+   ^--_1.--N.--<
+
+count from 9 down to 1 and print it out.
+
+Explanation:
+9 pushes the number 9 onto the stack
+- (and |) are whitespace and are ignored.
+v sets the direction to downwards. (likewise, ^>< also change directions)
+. duplicates the top element of the stack (`9` the first time)
+I pops the top of the stack & checks it. If it's falsey, it turns 90º left, otherwise it continues straight. (? is 90º right)
+N prints out a number off the top
+1 pushes the number 1 onto the stack (like 9)
+_ subtracts the top two elements (in this case, 9 - 1 -> 8). (`-` is already used for whitespace so `_` is subtraction)
+Q quits with exit code 0.

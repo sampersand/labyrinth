@@ -28,6 +28,7 @@ enum {
 	FDUPN = '#',
 	FPOPN = '@',
 	FSWAP = '$',
+	FSTACKLEN = 'C',
 
 	// directions
 	FNOPH = '-',
@@ -38,6 +39,8 @@ enum {
 	FDOWN = 'v',
 	FSPEEDUP = '{',
 	FSLOWDOWN = '}',
+	FJUMP1 = 'J',
+	FJUMPN = 'j',
 
 	// conditionals
 	FIFR = '?',
@@ -72,6 +75,8 @@ enum {
 	// io
 	FPRINTNL = 'P',
 	FPRINT = 'p',
+	FDUMPVALNL = 'N',
+	FDUMPVAL = 'n',
 	FDUMPQ = 'D',
 	FDUMP = 'd',
 	FQUIT0 = 'Q',
@@ -82,9 +87,10 @@ enum {
 #define MAX_ARGC 4
 
 char *strchr(const char *c, int);
+
 static inline int arity(function f) {
-	if (strchr("0123456789.:;$-|><^v{}DdQU\"\'", f)) return 0;
-	if (strchr(",#@!aAsi?ITPpq", f)) return 1;
+	if (strchr("0123456789.:;$-|><^v{}DdQU\"\'J", f)) return 0;
+	if (strchr(",#@!aAsi?ITPpqNnj", f)) return 1;
 	if (strchr("+_*/%=lgc", f)) return 2;
 	if (strchr("G", f)) return 3;
 	if (strchr("S", f)) return 4;

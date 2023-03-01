@@ -1,0 +1,8 @@
+C!--?--"usage: [program] integer"P--1q
+    |
+    |    v-----_1$-----<   calculate and print the 
+    |    |             |   factorial of 10
+    >-1$->--.--?--$:*--^
+               |
+       Q--N,---<
+  

@@ -141,6 +141,7 @@ int run(princess *p, function f) {
 	case FPOP2: _popn(p, 2); break;
 	case FPOPN: _popn(p, v2i(args[0])); break;
 	case FSWAP: push(p, popn(p, 2)); break;
+	case FSTACKLEN: push(p, i2v(p->stack->len)); break;
 
 	// directions
 	case FNOPH: case FNOPV: break;
@@ -150,6 +151,8 @@ int run(princess *p, function f) {
 	case FDOWN: p->velocity = DOWN; break;
 	case FSPEEDUP: p->velocity = add_coordinates(p->velocity, direction(p->velocity)); break;
 	case FSLOWDOWN: p->velocity = subtract_coordinates(p->velocity, direction(p->velocity)); break;
+	case FJUMP1: step(p); break;
+	case FJUMPN: for (int i = v2i(args[0]); i > 0; --i) step(p); break;
 
 	// conditionals
 	case FIFR:
@@ -194,8 +197,12 @@ int run(princess *p, function f) {
 	case FPRINTNL:
 	case FPRINT:
 		print(args[0], stdout);
-		if (f == FPRINTNL)
-			fputc('\n', stdout);
+		if (f == FPRINTNL) putchar('\n');
+		break;
+	case FDUMPVALNL:
+	case FDUMPVAL:
+		dump_value(args[0], stdout);
+		if (f == FDUMPVALNL) putchar('\n');
 		break;
 
 	case FDUMPQ:

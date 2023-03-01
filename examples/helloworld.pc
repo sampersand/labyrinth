@@ -1,0 +1,17 @@
+"Hello "pv      prints out "Hello world"
+         "
+         w
+         o
+         r
+         l
+         d
+         "
+         P
+         Q
+
+" starts reading a string in the current direction until another one is hit.
+p prints the topmost string out without a newline
+v changes the direction to downward.
+" once again starts reading a string, but this time it's reading straight down.
+P prints the topmost string out with a newline
+Q quits with exit code 0
