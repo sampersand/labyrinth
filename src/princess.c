@@ -9,33 +9,19 @@ function **create_board(char *input) {
 	function **board = malloc(sizeof(function *) * cap);
 
 	while ((line = strsep(&input, "\n"))) {
-		if (len == cap) board = realloc(board, sizeof(function *) * (cap *= 2));
+		if (len == cap) grow(board, cap);
 		board[len++] = (function *) line;
 	}
 
 	return realloc(board, sizeof(function*) * len);
 }
 
-princess new_princess(function **board) {
-	return (princess) {
-		.board = board,
-		.velocity = RIGHT,
-		.position = ZERO,
-		.stack = aalloc(16),
-	};
-}
-
-void free_princess(princess *p) {
-	free(p->board);
-	afree(p->stack);
-	free(p);
-}
-
 void dump(const princess *p, FILE *out) {
-	fprintf(out, "Princess(position=(%d,%d), velocity=(%d,%d), stack=[",
-		p->position.x, p->position.y,
-		p->velocity.x, p->velocity.y
-	);
+	fputs("Princess(position=", out);
+	dump_coordinate(p->velocity, out);
+	fputs(", velocity=", out);
+	dump_coordinate(p->position, out);
+	fputs(", stack=[", out);
 
 	for (int i = 0; i < p->stack->len; ++i) {
 		if (i) fputs(", ", out);
@@ -43,27 +29,6 @@ void dump(const princess *p, FILE *out) {
 	}
 
 	fputs("])", out);
-}
-
-void push(princess *p, VALUE v) {
-	if (p->stack->len == p->stack->cap)
-		p->stack->items = realloc(p->stack->items, sizeof(VALUE) * (p->stack->cap *= 2));
-
-	p->stack->items[p->stack->len++] = v;
-}
-
-VALUE popn(princess *p, int n) {
-	if (n == 1) return pop(p);
-	ensure(n, "indexing starts at 1");
-	ensure(n <= p->stack->len, "index %d is out of boudns for stack len %d", n, p->stack->len);
-
-	VALUE v = p->stack->items[p->stack->len - n];
-
-	do
-		p->stack->items[p->stack->len - n] = p->stack->items[p->stack->len - n+1];
-	while (n--);
-	p->stack->len--;
-	return v;
 }
 
 int play(princess *p) {
@@ -81,11 +46,12 @@ int play(princess *p) {
 static void _dupn(princess *p, int n) {
 	push(p, dupn(p, n));
 }
+
 static void _popn(princess *p, int n) {
-	drop(popn(p, n));
+	drop(apop(p->stack, n));
 }
 
-static VALUE scan_str(princess *p) {
+VALUE scan_str(princess *p) {
 	array *a = aalloc(8);
 	char c;
 
@@ -97,17 +63,17 @@ static VALUE scan_str(princess *p) {
 	return a2v(a);
 }
 
-static VALUE scan_int(princess *p) {
+VALUE scan_int(princess *p) {
 	int sign = 1;
 	integer i = 0;
 
 	char c = move(p);
 	if (c == '-') sign = -1;
 	else if (!isdigit(c)) return 0;
-	else i = c - '0';
+	else i = c2i(c);
 
 	while (isdigit(c = move(p)))
-		i *= 10, i += c-'0';
+		i *= 10, i += c2i(c);
 
 	if (c) unstep(p);
 
@@ -122,14 +88,15 @@ int run(princess *p, function f) {
 		args[i] = pop(p);
 
 	switch (f) {
+	case FRAND: push(p, i2v(random())); break;
 	case FI0: case FI1: case FI2:
 	case FI3: case FI4: case FI5:
 	case FI6: case FI7: case FI8: case FI9:
-		push(p, i2v(f - '0'));
+		unstep(p);
+		push(p, scan_int(p));
 		break;
 
 	case FSTR: push(p, scan_str(p)); break;
-	case FINT: push(p, scan_int(p)); break;
 	case FARY: die("todo: func for `[`");
 	case FARYEND: die("todo: func for `]`");
 
@@ -140,7 +107,7 @@ int run(princess *p, function f) {
 	case FPOP:  break; // we already popped the argument off.
 	case FPOP2: _popn(p, 2); break;
 	case FPOPN: _popn(p, v2i(args[0])); break;
-	case FSWAP: push(p, popn(p, 2)); break;
+	case FSWAP: push(p, apop(p->stack, 2)); break;
 	case FSTACKLEN: push(p, i2v(p->stack->len)); break;
 
 	// directions
@@ -150,7 +117,13 @@ int run(princess *p, function f) {
 	case FUP: p->velocity = UP; break;
 	case FDOWN: p->velocity = DOWN; break;
 	case FSPEEDUP: p->velocity = add_coordinates(p->velocity, direction(p->velocity)); break;
-	case FSLOWDOWN: p->velocity = subtract_coordinates(p->velocity, direction(p->velocity)); break;
+	case FSLOWDOWN: {
+		coordinate old_velo = p->velocity;
+		p->velocity = subtract_coordinates(p->velocity, direction(p->velocity));
+		if (coordinate_equal(p->velocity, ZERO))
+			p->velocity = subtract_coordinates(p->velocity, direction(p->velocity));
+		break;
+	}
 	case FJUMP1: step(p); break;
 	case FJUMPN: for (int i = v2i(args[0]); i > 0; --i) step(p); break;
 

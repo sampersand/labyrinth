@@ -13,7 +13,7 @@ array *aalloc(int amnt) {
 }
 
 void afree(array *a) {
-	assert(a->rc);
+	assume(a->rc);
 	if (--a->rc) return;
 	free(a->items);
 	free(a);
@@ -34,10 +34,7 @@ int eql(VALUE l, VALUE r) {
 
 integer parse_int(VALUE v) {
 	integer i = 0, tmp;
-	if (isint(v)) {
-		i = INT(v);
-		return isdigit(i) ? i-'0' : 0;
-	}
+	if (isint(v)) return isdigit(i = INT(v)) ? c2i(i) : 0;
 
 	array *a = ARY(v);
 	int idx = 0, sign = 1;
@@ -50,21 +47,32 @@ integer parse_int(VALUE v) {
 		tmp = INT(a->items[idx++]);
 
 		if (!isdigit(tmp)) break;
-		i = i*10 + (tmp - '0');
+		i = i*10 + c2i(tmp);
 	}
 
 	return i * sign;
 }
 
 void apush(array *a, VALUE v) {
-	if (a->len == a->cap)
-		a->items = realloc(a->items, sizeof(VALUE) * (a->cap*=2));
+	if (a->len == a->cap) grow(a->items, a->cap);
 	a->items[a->len++] = v;
 }
 
-VALUE apop(array *a) {
-	ensure(a->len, "popped from an empty array");
-	return a->items[--a->len];
+VALUE apop(array *a, int n) {
+	ensure(n, "indexing starts at 1");
+	ensure(n <= a->len, "index %d is out of bounds for stack len %d", n, a->len);
+	if (n == 1) return a->items[--a->len];
+
+	VALUE v = a->items[a->len - n];
+	if (n == 2) {
+		a->items[a->len - 2] = a->items[a->len-1];
+		a->len--;
+		return v;
+	}
+	
+	do a->items[a->len - n] = a->items[a->len - n - 1]; while (n--);
+	a->len--;
+	return v;
 }
 
 array *to_string(VALUE v) {

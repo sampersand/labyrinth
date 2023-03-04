@@ -16,7 +16,6 @@ enum {
 
 	// mode changing functions
 	FSTR = '\"',
-	FINT = '\'',
 	FARY = '[',
 	FARYEND = ']',
 
@@ -41,6 +40,8 @@ enum {
 	FSLOWDOWN = '}',
 	FJUMP1 = 'J',
 	FJUMPN = 'j',
+	FGETPOS = 'r',
+	// FRETURN = 'R',
 
 	// conditionals
 	FIFR = '?',
@@ -53,6 +54,7 @@ enum {
 	FMUL = '*',
 	FDIV = '/',
 	FMOD = '%',
+	FRAND = 'R',
 
 	// comparisons
 	FEQL = '=',
@@ -89,7 +91,7 @@ enum {
 char *strchr(const char *c, int);
 
 static inline int arity(function f) {
-	if (strchr("0123456789.:;$-|><^v{}DdQU\"\'J", f)) return 0;
+	if (strchr("0123456789.:;$-|><^v{}DdQU\"JRC", f)) return 0;
 	if (strchr(",#@!aAsi?ITPpqNnj", f)) return 1;
 	if (strchr("+_*/%=lgc", f)) return 2;
 	if (strchr("G", f)) return 3;

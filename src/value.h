@@ -1,9 +1,7 @@
 #pragma once
-#include <assert.h>
 #include "shared.h"
 
 typedef long long VALUE;
-typedef long long integer;
 
 typedef struct {
 	int len, cap, rc;
@@ -21,17 +19,17 @@ static inline VALUE i2v(integer i) {
 }
 
 static inline VALUE a2v(array *a) {
-	assert(!isint((VALUE) a));
+	assume(!isint((VALUE) a));
 	return (VALUE) a;
 }
 
 static inline array *ARY(VALUE v) {
-	assert(!isint(v));
+	assume(!isint(v));
 	return (array *) v;
 }
 
 static inline integer INT(VALUE v) {
-	assert(isint(v));
+	assume(isint(v));
 	return v >> 1;
 }
 
@@ -61,7 +59,7 @@ void afree(array *a);
 void dump_value(VALUE v, FILE *f);
 void apush(array *a, VALUE v);
 void print(VALUE v, FILE *f);
-VALUE apop(array *a);
+VALUE apop(array *a, int i);
 VALUE map(VALUE l, VALUE r, integer (*fn)(integer, integer));
 static inline integer _v_add(integer l, integer r) { return l + r; }
 static inline integer _v_sub(integer l, integer r) { return l - r; }

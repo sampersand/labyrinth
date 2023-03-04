@@ -21,6 +21,7 @@ char *read_file(const char *file) {
 #undef do_or
 
 int main(int c, char **a) {
+	srandomdev();
 	if (c < 3 || a[1][0] != '-' || strlen(a[1]) != 2)
 		die("usage: %s (-f file | -e 'expr') [ints to put on the stack]\n", a[0]);
 

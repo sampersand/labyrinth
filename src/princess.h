@@ -27,7 +27,6 @@ static inline void unstep(princess *p) {
 	p->position = subtract_coordinates(p->position, p->velocity);
 }
 
-
 #define INT2EXIT(n) (((n) << 1) | 1)
 #define EXIT2INT(n) ((n) >> 1)
 #define RUN_CONTINUE 0
@@ -35,11 +34,22 @@ static inline void unstep(princess *p) {
 int run(princess *p, function f);
 int play(princess *p);
 function **create_board(char *input);
-princess new_princess(function **board);
-void free_princess(princess *p);
 void pdump(const princess *p, FILE *f);
-void push(princess *p, VALUE v);
-VALUE popn(princess *p, int i);
+VALUE scan_str(princess *p);
+VALUE scan_int(princess *p);
+
+static inline princess new_princess(function **board) {
+	return (princess) {
+		.board = board,
+		.velocity = RIGHT,
+		.position = ZERO,
+		.stack = aalloc(16),
+	};
+}
+
+static inline void free_princess(princess *p) {
+	free(p->board), afree(p->stack);
+}
 
 static inline VALUE nth(const princess *p, int idx) {
 	ensure(idx, "indexing starts at 1, not 0");
@@ -51,8 +61,11 @@ static inline VALUE dupn(const princess *p, int idx) {
 	return clone(nth(p, idx));
 }
 
+static inline void push(princess *p, VALUE v) {
+	apush(p->stack, v);
+}
+
 static inline VALUE pop(princess *p) {
-	ensure(p->stack->len, "popping from an empty stack");
-	return p->stack->items[--p->stack->len];
+	return apop(p->stack, 1);
 }
 

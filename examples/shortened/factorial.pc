@@ -16,14 +16,3 @@ v< set the direction to go left.
 4j (well, j4) jumps four places ahead (landing on the `_`)
 _ subtracts the 1 from the accumulator
 ^> starts the sequence over again
-
-If it's falsey
-> changes the direction to right
-, pops the top element off (ie the decrementing field)
-N dumps the top element to stdout; integers are printed as-is
-Q exits with status code 0
-
-
-v    >,NQ
->1$>.I$:v
-   ^_1$*<
