@@ -40,28 +40,23 @@ static void print_board(const board *b, coordinate invert) {
 	for (int i = 0; i < b->cols; ++i) {
 		if (i != invert.y) puts(b->fns[i]);
 		else printf("%.*s\033[7m%c\033[0m%s\n",
-			invert.x,
-			b->fns[i],
-			b->fns[i][invert.x],
-			b->fns[i] + invert.x + 1
-		);
-
+			invert.x, b->fns[i], b->fns[i][invert.x], b->fns[i] + invert.x + 1);
 	}
 }
-
-#ifdef PRINCESS_ISNT_WORKING_FOR_ME
-static void debug_print_board(princess *p){}
-static void sleep_for_ms(int ms){}
-#else
-#include <time.h>
 static void debug_print_board(princess *p) {
 	puts("\e[1;1H\e[2J"); // clear screen
 	dump_value(a2v(p->stack), stdout);
 	putchar('\n');
 	print_board(&p->board, p->position);
 }
+
+#ifdef PRINCESS_ISNT_WORKING_FOR_ME
+#include <Windows.h>
+static void sleep_for_ms(int ms){ Sleep(ms); }
+#else
+#include <time.h>
 static void sleep_for_ms(int ms) {
-	nanosleep(&(struct timespec) { 0, ms * 1000 }, 0);
+	nanosleep(&(struct timespec) { 0, ms * 1000000 }, 0);
 }
 #endif
 
@@ -70,7 +65,7 @@ int play(princess *p) {
 
 	while (1) {
 		if (p->debug)
-			debug_print_board(p), sleep_for_ms(25000);
+			debug_print_board(p), sleep_for_ms(25);
 
 		int status = run(p, move(p));
 		if (status != RUN_CONTINUE)
