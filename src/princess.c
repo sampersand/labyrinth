@@ -64,7 +64,7 @@ void hire_handmaiden(princess *p, handmaiden hm) {
 }
 
 void fire_handmaiden(princess *p, int i) {
-	assume(i && i < p->nhm);
+	assume(i < p->nhm);
 	free_handmaiden(&p->handmaidens[i]);
 
 	p->handmaidens[i] = p->handmaidens[--p->nhm];
@@ -83,7 +83,7 @@ int play(princess *p) {
 			}
 			int status = do_chores(&p->handmaidens[i], move(&p->handmaidens[i], &p->board), p);
 			if (status == RUN_CONTINUE) continue;
-			if (!i) return EXIT2INT(status);
+			if (p->nhm == 1) return EXIT2INT(status);
 			fire_handmaiden(p, i);
 			i--;
 			nhm--;
