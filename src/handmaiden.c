@@ -52,6 +52,14 @@ static void _popn(handmaiden *hm, int n) {
 	drop(apop(hm->stack, n));
 }
 
+#define HIRE(velocity) \
+		hire_handmaiden(p, \
+			new_handmaiden( \
+				hm->position, \
+				velocity, \
+				ARY(duplicate(a2v(hm->stack))) \
+			) \
+		);
 
 int do_chores(handmaiden *hm, function f, princess *p) {
 	int status = RUN_CONTINUE;
@@ -84,7 +92,14 @@ int do_chores(handmaiden *hm, function f, princess *p) {
 	case FSTACKLEN: push(hm, i2v(hm->stack->len)); break;
 
 	// directions
-	case FNOPH: case FNOPV: break;
+	case FMOVEH:
+		if (hm->velocity.x) break;
+		HIRE(rotate_left(hm->velocity));
+		hm->velocity = rotate_right(hm->velocity);
+		break;
+	case FMOVEV:
+		if (hm->velocity.y) break;
+		abort();
 	case FRIGHT: hm->velocity = RIGHT; break;
 	case FLEFT: hm->velocity = LEFT; break;
 	case FUP: hm->velocity = UP; break;
@@ -106,8 +121,14 @@ int do_chores(handmaiden *hm, function f, princess *p) {
 		if (!is_truthy(args[0]))
 			hm->velocity = (f==FIFR ? rotate_right : rotate_left)(hm->velocity);
 		break;
-	case FIFPOP:
+	case FIFPOPOLD:
 		if (!is_truthy(args[0])) pop(hm);
+		break;
+	case FIFPOP:
+		_popn(hm, is_truthy(args[0]) ? 1 : 2);
+		break;
+	case FJUMPIF:
+		if (!is_truthy(args[0])) step(hm); break;
 		break;
 
 
@@ -164,20 +185,13 @@ int do_chores(handmaiden *hm, function f, princess *p) {
 	case FQUIT: status = INT2EXIT(v2i(args[0])); break;
 	case FGETS: die("todo: getc");
 
-	case FFORKL:
-	case FFORKR:
-		hire_handmaiden(p, 
-			new_handmaiden(
-				hm->position,
-				(f == FFORKL ? rotate_left : rotate_right)(hm->velocity),
-				ARY(duplicate(a2v(hm->stack)))
-			)
-		);
+	case FHIREL:
+	case FHIRER:
+		HIRE((f == FHIREL ? rotate_left : rotate_right)(hm->velocity));
 		break;
-	// FFORKL = 'H', // hire them
-	// FFORKR = 'R', // hire them
-	// FJOIN1 = 'F', // fire
-	// FJOINN = 'f', // fire n
+
+	case FFIRE1: fire_when(p, hm, 1); break;
+	case FFIREN: fire_when(p, hm, v2i(args[0])); break;
 
 	default:
 		die("unknown function '%c' (%d) (%d,%d)", f, (int) f, hm->position.x, hm->position.y);

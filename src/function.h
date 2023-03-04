@@ -30,8 +30,8 @@ enum {
 	FSTACKLEN = 'C',
 
 	// directions
-	FNOPH = '-',
-	FNOPV = '|',
+	FMOVEH = '-',
+	FMOVEV = '|',
 	FRIGHT = '>',
 	FLEFT = '<',
 	FUP = '^',
@@ -46,16 +46,18 @@ enum {
 	// conditionals
 	FIFR = '?',
 	FIFL = 'I',
+	FIFPOPOLD = 't',
 	FIFPOP = 'T',
-	FFORKL = 'H', // hire them
-	FFORKR = 'h', // hire them
-	FJOIN1 = 'F', // fire
-	FJOINN = 'f', // fire n
+	FJUMPIF = 'K',
+	FHIREL = 'H', // hire them
+	FHIRER = 'h', // hire them
+	FFIRE1 = 'F', // fire
+	FFIREN = 'f', // fire n
 
 
 	// math
 	FADD = '+',
-	FSUB = '_', // `-` is used by FNOPH already.
+	FSUB = '_', // `-` is used by FMOVEH already.
 	FMUL = '*',
 	FDIV = '/',
 	FMOD = '%',
@@ -100,8 +102,8 @@ enum {
 char *strchr(const char *c, int);
 
 static inline int arity(function f) {
-	if (strchr("0123456789.:;$-|><^v{}DdQU\"JRC", f)) return 0;
-	if (strchr(",#@!aAsi?ITPpqNnjxX", f)) return 1;
+	if (strchr("0123456789.:;$-|><^v{}DdQU\"JRCHh", f)) return 0;
+	if (strchr(",#@!aAsi?ItTPpqNnjxXKf", f)) return 1;
 	if (strchr("+_*/%=lgc", f)) return 2;
 	if (strchr("G", f)) return 3;
 	if (strchr("S", f)) return 4;

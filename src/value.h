@@ -45,7 +45,7 @@ static inline integer a2i(const array *a) {
 }
 
 static inline int is_truthy(VALUE v) {
-	return v == i2v(0) || !isint(v) && !ARY(v)->len;
+	return isint(v) ? v != i2v(0) : !ARY(v)->len;
 }
 
 static inline int len(VALUE v) {

@@ -1,10 +1,10 @@
-C!--100--$--T--v   if no argument is given on the stack,
+C!--100--$--t--v   if no argument is given on the stack,
                |   then default to doing fizzbuzz up to 100.
 v--------------<
 |
 >-1->-::=-?---Q 
     |     |         expanded out fizzbuzz .
-    ^-----|--XP<
+    ^-----|J-XP<
           |    |
       v---<    |
       |        | 
