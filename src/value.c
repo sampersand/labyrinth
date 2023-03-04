@@ -6,7 +6,6 @@ const array *empty_array = 0;
 const integer zero = 0;
 
 array *aalloc(int amnt) {
-	if (!amnt) return 0;
 	array *a = malloc(sizeof(array));
 	*a = (array) { 0, amnt, 1, malloc(sizeof(VALUE) * amnt) };
 	return a;
@@ -51,6 +50,15 @@ integer parse_int(VALUE v) {
 	}
 
 	return i * sign;
+}
+
+VALUE duplicate(VALUE v) {
+	if (isint(v)) return v;
+	array *a = ARY(v);
+	array *d = aalloc(a->cap);
+	while (d->len < a->len)
+		d->items[d->len] = clone(a->items[d->len]), d->len++;
+	return a2v(d);
 }
 
 void apush(array *a, VALUE v) {

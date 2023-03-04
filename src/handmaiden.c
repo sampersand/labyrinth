@@ -16,12 +16,12 @@ int isdigit(int);
 
 VALUE scan_str(handmaiden *hm, const board *b) {
 	array *a = aalloc(8);
-	char c;
 
-	while ((c = move(hm, b)) != FSTR) {
+	for (char c; (c = move(hm, b)) != FSTR; hm->steps_ahead++) {
 		if (!c) die("unterminated string");
 		apush(a, i2v(c));
 	}
+
 
 	return a2v(a);
 }
@@ -30,12 +30,13 @@ VALUE scan_int(handmaiden *hm, const board *b) {
 	int sign = 1;
 	integer i = 0;
 
+	hm->steps_ahead++;
 	char c = move(hm, b);
 	if (c == '-') sign = -1;
 	else if (!isdigit(c)) return 0;
 	else i = c2i(c);
 
-	while (isdigit(c = move(hm, b)))
+	for (; isdigit(c = move(hm, b)); hm->steps_ahead++)
 		i *= 10, i += c2i(c);
 
 	if (c) unstep(hm);
@@ -159,9 +160,25 @@ int do_chores(handmaiden *hm, function f, princess *p) {
 		fflush(stdout);
 		if (f != FDUMPQ) break;
 		FALLTHROUGH
-	case 'Q': status = INT2EXIT(0); break;
-	case 'q': status = INT2EXIT(v2i(args[0])); break;
-	case 'U': die("todo: getc");
+	case FQUIT0: status = INT2EXIT(0); break;
+	case FQUIT: status = INT2EXIT(v2i(args[0])); break;
+	case FGETS: die("todo: getc");
+
+	case FFORKL:
+	case FFORKR:
+		hire_handmaiden(p, 
+			new_handmaiden(
+				hm->position,
+				(f == FFORKL ? rotate_left : rotate_right)(hm->velocity),
+				ARY(duplicate(a2v(hm->stack)))
+			)
+		);
+		break;
+	// FFORKL = 'H', // hire them
+	// FFORKR = 'R', // hire them
+	// FJOIN1 = 'F', // fire
+	// FJOINN = 'f', // fire n
+
 	default:
 		die("unknown function '%c' (%d) (%d,%d)", f, (int) f, hm->position.x, hm->position.y);
 	}

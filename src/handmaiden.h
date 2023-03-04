@@ -5,8 +5,9 @@
 #include "value.h"
 
 typedef struct {
-    coordinate velocity, position;
+    coordinate position, velocity;
     array *stack;
+    int steps_ahead;
 } handmaiden;
 
 
@@ -18,6 +19,9 @@ int do_chores(handmaiden *hm, function f, struct princess *p);
 VALUE scan_str(handmaiden *hm, const board *b);
 VALUE scan_int(handmaiden *hm, const board *b);
 void dump_handmaiden(const handmaiden *p, FILE *out);
+static inline handmaiden new_handmaiden(coordinate p, coordinate v, array *s) {
+	return (handmaiden) { p, v, s, 0 };
+}
 
 static void free_handmaiden(handmaiden *hm) {
 	afree(hm->stack);

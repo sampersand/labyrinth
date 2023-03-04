@@ -47,6 +47,11 @@ enum {
 	FIFR = '?',
 	FIFL = 'I',
 	FIFPOP = 'T',
+	FFORKL = 'H', // hire them
+	FFORKR = 'h', // hire them
+	FJOIN1 = 'F', // fire
+	FJOINN = 'f', // fire n
+
 
 	// math
 	FADD = '+',

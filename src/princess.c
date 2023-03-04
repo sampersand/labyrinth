@@ -11,11 +11,7 @@ princess new_princess(board b) {
 		.hmcap = 4,
 		.handmaidens = malloc(sizeof(handmaiden) * 4)
 	};
-	p.handmaidens[0] = (handmaiden) {
-		.velocity = RIGHT,
-		.position = ZERO,
-		.stack = aalloc(16)
-	};
+	p.handmaidens[0] = new_handmaiden(ZERO, RIGHT, aalloc(16));
 	return p;
 }
 
@@ -45,7 +41,7 @@ static void print_board(const board *b, coordinate invert) {
 	}
 }
 static void debug_print_board(princess *p) {
-	puts("\e[1;1H\e[2J"); // clear screen
+	// puts("\e[1;1H\e[2J"); // clear screen
 	print_board(&p->board, p->handmaidens[0].position);
 	for (int i = 0; i < p->nhm; ++i)
 		dump_value(a2v(p->handmaidens[i].stack), stdout),
@@ -62,9 +58,16 @@ static void sleep_for_ms(int ms) {
 }
 #endif
 
-static void fire_handmaiden(princess *p, int i) {
+void hire_handmaiden(princess *p, handmaiden hm) {
+	if (p->nhm == p->hmcap) grow(p->handmaidens, p->hmcap);
+	p->handmaidens[p->nhm++] = hm;
+}
+
+void fire_handmaiden(princess *p, int i) {
 	assume(i && i < p->nhm);
-	die("todo");
+	free_handmaiden(&p->handmaidens[i]);
+
+	p->handmaidens[i] = p->handmaidens[--p->nhm];
 }
 
 int play(princess *p) {
@@ -72,11 +75,12 @@ int play(princess *p) {
 		unstep(&p->handmaidens[i]);
 
 	while (1) {
-		if (p->debug)
-			debug_print_board(p), sleep_for_ms(25);
-
 		int nhm = p->nhm; // store it so if it's updated during running we won't do more work.
 		for (int i = 0; i < nhm; ++i) {
+			if (p->handmaidens[i].steps_ahead) {
+				--p->handmaidens[i].steps_ahead;
+				continue;
+			}
 			int status = do_chores(&p->handmaidens[i], move(&p->handmaidens[i], &p->board), p);
 			if (status == RUN_CONTINUE) continue;
 			if (!i) return EXIT2INT(status);
@@ -84,6 +88,9 @@ int play(princess *p) {
 			i--;
 			nhm--;
 		}
+
+		if (p->debug)
+			debug_print_board(p), sleep_for_ms(25);
 	}
 
 	return 0;

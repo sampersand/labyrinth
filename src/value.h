@@ -45,7 +45,7 @@ static inline integer a2i(const array *a) {
 }
 
 static inline int is_truthy(VALUE v) {
-	return v > 1;
+	return v == i2v(0) || !isint(v) && !ARY(v)->len;
 }
 
 static inline int len(VALUE v) {
@@ -81,6 +81,7 @@ static inline VALUE vgth(VALUE l, VALUE r) { return map(l, r, _v_gth); }
 static inline VALUE vcmp(VALUE l, VALUE r) { return map(l, r, _v_cmp); }
 
 
+VALUE duplicate(VALUE v);
 static inline VALUE clone(VALUE v) {
 	if (!isint(v)) ARY(v)->rc++;
 	return v;

@@ -16,3 +16,5 @@ int play(princess *p);
 void dump(const princess *p, FILE *f);
 princess new_princess(board b);
 void free_princess(princess *p);
+void hire_handmaiden(princess *p, handmaiden hm);
+void fire_handmaiden(princess *p, int i);
