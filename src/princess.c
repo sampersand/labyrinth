@@ -144,6 +144,8 @@ int run(princess *p, function f) {
 	case FMUL: push(p, vmul(args[1], args[0])); break;
 	case FDIV: push(p, vdiv(args[1], args[0])); break;
 	case FMOD: push(p, vmod(args[1], args[0])); break;
+	case FINC: push(p, vadd(args[0], i2v(1))); break;
+	case FDEC: push(p, vsub(args[0], i2v(1))); break;
 
 	// comparisons
 	case FEQL: push(p, i2v(eql(args[1], args[0]))); break;

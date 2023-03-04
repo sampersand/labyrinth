@@ -48,6 +48,8 @@ This is my 2d array-programing langauge. It's a WIP.
 | `g` | 2 | Pushes whether the penultimate element is smaller than the topmost element. |
 | `c` | 2 | Pushes `1`, `0`, and `-1` depending on how the penultimate element compares to the ultimate. |
 | `!` | 1 | 1 if the topmost element is 0 or an empty array; pushes 0 otherwise |
+| `X` | 1 | Increment by one |
+| `x` | 1 | Decrement by one |
 
 #### Integer <-> String functions.
 | Command | # of args | Description |

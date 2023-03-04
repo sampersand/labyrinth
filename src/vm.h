@@ -55,6 +55,8 @@ enum {
 	FDIV = '/',
 	FMOD = '%',
 	FRAND = 'R',
+	FINC = 'X',
+	FDEC = 'x',
 
 	// comparisons
 	FEQL = '=',
@@ -92,7 +94,7 @@ char *strchr(const char *c, int);
 
 static inline int arity(function f) {
 	if (strchr("0123456789.:;$-|><^v{}DdQU\"JRC", f)) return 0;
-	if (strchr(",#@!aAsi?ITPpqNnj", f)) return 1;
+	if (strchr(",#@!aAsi?ITPpqNnjxX", f)) return 1;
 	if (strchr("+_*/%=lgc", f)) return 2;
 	if (strchr("G", f)) return 3;
 	if (strchr("S", f)) return 4;
