@@ -6,13 +6,23 @@
 #include "vm.h"
 
 typedef struct {
-	function **board;
+	int rows, cols;
+	function **fns;
+} board;
+
+typedef struct {
+	board board;
 	coordinate velocity, position;
 	array *stack;
+	int debug;
 } princess;
 
-static inline function getfn(const princess *p, coordinate c) {
-	return p->board[c.y][c.x];
+static inline function getfn(const board *b, coordinate c) {
+	return b->fns[c.y][c.x];
+}
+
+static inline void setfn(board *b, coordinate c, function f) {
+	b->fns[c.y][c.x] = f;
 }
 
 static inline void step(princess *p) {
@@ -20,7 +30,7 @@ static inline void step(princess *p) {
 }
 
 static inline function move(princess *p) {
-	return step(p), getfn(p, p->position);
+	return step(p), getfn(&p->board, p->position);
 }
 
 static inline void unstep(princess *p) {
@@ -31,24 +41,26 @@ static inline void unstep(princess *p) {
 #define EXIT2INT(n) ((n) >> 1)
 #define RUN_CONTINUE 0
 
+// void print_board(const board *b);
 int run(princess *p, function f);
 int play(princess *p);
-function **create_board(char *input);
+board create_board(char *input);
 void pdump(const princess *p, FILE *f);
 VALUE scan_str(princess *p);
 VALUE scan_int(princess *p);
 
-static inline princess new_princess(function **board) {
+static inline princess new_princess(board b) {
 	return (princess) {
-		.board = board,
+		.board = b,
 		.velocity = RIGHT,
 		.position = ZERO,
+		.debug = 0,
 		.stack = aalloc(16),
 	};
 }
 
 static inline void free_princess(princess *p) {
-	free(p->board), afree(p->stack);
+	free(p->board.fns), afree(p->stack);
 }
 
 static inline VALUE nth(const princess *p, int idx) {

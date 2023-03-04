@@ -27,8 +27,11 @@ int main(int c, char **a) {
 
 	char *input = a[1][1] == 'e' ? a[2] : read_file(a[2]);
 	princess p = new_princess(create_board(input));
-	for (int i = 3; i < c; ++i)
-		push(&p, i2v(atoi(a[i])));
+
+	int i = 3;
+	if (c >= 4 && a[3][0] == '-' && a[3][1] == 'd' && a[3][2] == '\0')
+		p.debug = 1, ++i;
+	while (i < c) push(&p, i2v(atoi(a[i++])));
 
 	return play(&p);
 }

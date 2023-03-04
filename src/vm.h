@@ -85,7 +85,9 @@ enum {
 	FDUMP = 'd',
 	FQUIT0 = 'Q',
 	FQUIT = 'q',
-	FGETS = 'U'
+	FGETS = 'U',
+
+	DEBUG_SIGNIFIER_FUNCTION = 'o',
 };
 
 #define MAX_ARGC 4

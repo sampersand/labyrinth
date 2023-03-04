@@ -3,17 +3,22 @@
 #include <ctype.h>
 #include "vm.h"
 
-function **create_board(char *input) {
-	int len = 0, cap = 8;
-	char *line, fn;
-	function **board = malloc(sizeof(function *) * cap);
+board create_board(char *input) {
+	int cap = 8, row;
+	char *line;
+	board b = {
+		.rows = 0,
+		.cols = 0,
+		.fns = malloc(sizeof(function *) * cap),	
+	};
 
 	while ((line = strsep(&input, "\n"))) {
-		if (len == cap) grow(board, cap);
-		board[len++] = (function *) line;
+		if (b.cols == cap) grow(b.fns, cap);
+		b.fns[b.cols++] = (function *) line;
+		if (b.rows < (row = strlen(line))) b.rows = row;
 	}
 
-	return realloc(board, sizeof(function*) * len);
+	return b;
 }
 
 void dump(const princess *p, FILE *out) {
@@ -31,10 +36,42 @@ void dump(const princess *p, FILE *out) {
 	fputs("])", out);
 }
 
+static void print_board(const board *b, coordinate invert) {
+	for (int i = 0; i < b->cols; ++i) {
+		if (i != invert.y) puts(b->fns[i]);
+		else printf("%.*s\033[7m%c\033[0m%s\n",
+			invert.x,
+			b->fns[i],
+			b->fns[i][invert.x],
+			b->fns[i] + invert.x + 1
+		);
+
+	}
+}
+
+#ifdef PRINCESS_ISNT_WORKING_FOR_ME
+static void debug_print_board(princess *p){}
+static void sleep_for_ms(int ms){}
+#else
+#include <time.h>
+static void debug_print_board(princess *p) {
+	puts("\e[1;1H\e[2J"); // clear screen
+	dump_value(a2v(p->stack), stdout);
+	putchar('\n');
+	print_board(&p->board, p->position);
+}
+static void sleep_for_ms(int ms) {
+	nanosleep(&(struct timespec) { 0, ms * 1000 }, 0);
+}
+#endif
+
 int play(princess *p) {
 	unstep(p);
 
 	while (1) {
+		if (p->debug)
+			debug_print_board(p), sleep_for_ms(25000);
+
 		int status = run(p, move(p));
 		if (status != RUN_CONTINUE)
 			return EXIT2INT(status);
