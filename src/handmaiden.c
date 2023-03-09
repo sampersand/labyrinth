@@ -93,13 +93,11 @@ int do_chores(handmaiden *hm, function f, princess *p) {
 
 	// directions
 	case FMOVEH:
-		if (hm->velocity.x) break;
+	case FMOVEV:
+		if (f == FMOVEH ? hm->velocity.x : hm->velocity.y) break;
 		HIRE(rotate_left(hm->velocity));
 		hm->velocity = rotate_right(hm->velocity);
 		break;
-	case FMOVEV:
-		if (hm->velocity.y) break;
-		abort();
 	case FRIGHT: hm->velocity = RIGHT; break;
 	case FLEFT: hm->velocity = LEFT; break;
 	case FUP: hm->velocity = UP; break;

@@ -33,19 +33,43 @@ void dump(const princess *p, FILE *out) {
 	fputc(')', out);
 }
 
-static void print_board(const board *b, coordinate invert) {
-	for (int i = 0; i < b->cols; ++i) {
-		if (i != invert.y) puts(b->fns[i]);
-		else printf("%.*s\033[7m%c\033[0m%s\n",
-			invert.x, b->fns[i], b->fns[i][invert.x], b->fns[i] + invert.x + 1);
+static int cmp_int(const void *l, const void *r) {
+	return *(int *)l - *(int *)r;
+}
+
+static void print_board(const board *b, handmaiden *hms, int nhms) {
+	int indices[nhms], nindices;
+
+	for (int col = 0; col < b->cols; ++col) {
+		nindices = 0;
+
+		for (int i = 0; i < nhms; ++i)
+			if (hms[i].position.y == col)
+				indices[nindices++] = hms[i].position.x;
+
+		if (!nindices) {
+			puts(b->fns[col]);
+			continue;
+		}
+
+		qsort(indices, nindices, sizeof(int), cmp_int);
+		for (int i = 0; i < nindices; ++i) {
+			if (i && indices[i] == indices[i-1]) continue;
+			int start = (i == 0 ? 0 : indices[i - 1] + 1);
+			printf("%.*s\033[7m%c\033[0m",
+				indices[i] - start, b->fns[col] + start, b->fns[col][indices[i]]);
+		}
+		puts(b->fns[col] + indices[nindices - 1] + 1);
 	}
 }
 static void debug_print_board(princess *p) {
-	// puts("\e[1;1H\e[2J"); // clear screen
-	print_board(&p->board, p->handmaidens[0].position);
-	for (int i = 0; i < p->nhm; ++i)
-		dump_value(a2v(p->handmaidens[i].stack), stdout),
+	fputs("\e[1;1H\e[2J", stdout); // clear screen
+	print_board(&p->board, p->handmaidens, p->nhm);
+	for (int i = 0; i < p->nhm; ++i) {
+		printf("maiden %d: ", i);
+		dump_value(a2v(p->handmaidens[i].stack), stdout);
 		putchar('\n');
+	}
 }
 
 #ifdef PRINCESS_ISNT_WORKING_FOR_ME
@@ -70,12 +94,16 @@ void fire_handmaiden(princess *p, int i) {
 	p->handmaidens[i] = p->handmaidens[--p->nhm];
 }
 
+#ifndef SLEEP_MS
+#define SLEEP_MS 25
+#endif
 int play(princess *p) {
 	for (int i = 0; i < p->nhm; ++i)
 		unstep(&p->handmaidens[i]);
 
 	while (1) {
 		int nhm = p->nhm; // store it so if it's updated during running we won't do more work.
+
 		for (int i = 0; i < nhm; ++i) {
 			if (p->handmaidens[i].steps_ahead) {
 				--p->handmaidens[i].steps_ahead;
@@ -88,9 +116,8 @@ int play(princess *p) {
 			i--;
 			nhm--;
 		}
-
 		if (p->debug)
-			debug_print_board(p), sleep_for_ms(25);
+			debug_print_board(p), sleep_for_ms(SLEEP_MS);
 	}
 
 	return 0;
