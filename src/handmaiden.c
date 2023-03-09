@@ -22,7 +22,6 @@ VALUE scan_str(handmaiden *hm, const board *b) {
 		apush(a, i2v(c));
 	}
 
-
 	return a2v(a);
 }
 
@@ -70,6 +69,7 @@ int do_chores(handmaiden *hm, function f, princess *p) {
 
 	switch (f) {
 	case FRAND: push(hm, i2v(random())); break;
+	case FRANDDIR: hm->velocity = DIRS[random() % 4]; break;
 	case FI0: case FI1: case FI2:
 	case FI3: case FI4: case FI5:
 	case FI6: case FI7: case FI8: case FI9:
@@ -95,8 +95,8 @@ int do_chores(handmaiden *hm, function f, princess *p) {
 	case FMOVEH:
 	case FMOVEV:
 		if (f == FMOVEH ? hm->velocity.x : hm->velocity.y) break;
-		HIRE(rotate_left(hm->velocity));
-		hm->velocity = rotate_right(hm->velocity);
+		HIRE(rotate_right(hm->velocity));
+		hm->velocity = rotate_left(hm->velocity);
 		break;
 	case FRIGHT: hm->velocity = RIGHT; break;
 	case FLEFT: hm->velocity = LEFT; break;
@@ -111,7 +111,7 @@ int do_chores(handmaiden *hm, function f, princess *p) {
 		break;
 	}
 	case FJUMP1: step(hm); break;
-	case FJUMPN: for (int i = v2i(args[0]); i > 0; --i) step(hm); break;
+	case FJUMPN: stepn: for (int i = v2i(args[0]); i > 0; --i) step(hm); break;
 
 	// conditionals
 	case FIFR:
@@ -127,6 +127,12 @@ int do_chores(handmaiden *hm, function f, princess *p) {
 		break;
 	case FJUMPIF:
 		if (!is_truthy(args[0])) step(hm); break;
+		break;
+	case FJUMPNIF:
+		if (!is_truthy(args[1])) goto stepn; 
+		break;
+	case FSLEEPN:
+		hm->steps_ahead += i2v(args[0]);
 		break;
 
 

@@ -3,7 +3,13 @@
 
 typedef struct { int x, y; } coordinate;
 
-const coordinate ZERO = {0,0}, UP = {0,-1}, DOWN = {0,1}, LEFT = {-1,0}, RIGHT = {1,0};
+const coordinate
+	ZERO = {0,0},
+	UP = {0,-1},
+	DOWN = {0,1},
+	LEFT = {-1,0},
+	RIGHT = {1,0},
+	DIRS[4] = {{0,-1},{0,1},{1,0},{-1,0}};
 
 static inline int coordinate_equal(coordinate c1, coordinate c2) {
 	return c1.x == c2.x && c1.y == c2.y;

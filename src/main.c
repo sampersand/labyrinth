@@ -34,8 +34,8 @@ int main(int c, char **a) {
 
 	int i = 3;
 	if (c >= 4 && a[3][0] == '-' && a[3][1] == 'd' && a[3][2] == '\0')
-		p.debug = 1, ++i;
-	while (i < c) push(&p.handmaidens[0], i2v(atoi(a[i++])));
+		p.options = DEBUG | DEBUG_PRINT_BOARD, ++i;
+	while (i < c) push(p.handmaidens[0], i2v(atoi(a[i++])));
 
 	return play(&p);
 }

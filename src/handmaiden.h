@@ -19,12 +19,15 @@ int do_chores(handmaiden *hm, function f, struct princess *p);
 VALUE scan_str(handmaiden *hm, const board *b);
 VALUE scan_int(handmaiden *hm, const board *b);
 void dump_handmaiden(const handmaiden *p, FILE *out);
-static inline handmaiden new_handmaiden(coordinate p, coordinate v, array *s) {
-	return (handmaiden) { p, v, s, 0 };
+static inline handmaiden *new_handmaiden(coordinate p, coordinate v, array *s) {
+	handmaiden *hm = malloc(sizeof(handmaiden));
+	*hm = (handmaiden) { p, v, s, 0 };
+	return hm;
 }
 
 static void free_handmaiden(handmaiden *hm) {
 	afree(hm->stack);
+	free(hm);
 }
 
 static inline void step(handmaiden *hm) {

@@ -40,6 +40,7 @@ enum {
 	FSLOWDOWN = '}',
 	FJUMP1 = 'J',
 	FJUMPN = 'j',
+	FSLEEPN = 'z',
 	FGETPOS = 'r',
 	// FRETURN = 'R',
 
@@ -49,6 +50,7 @@ enum {
 	FIFPOPOLD = 't',
 	FIFPOP = 'T',
 	FJUMPIF = 'K',
+	FJUMPNIF = 'k',
 	FHIREL = 'H', // hire them
 	FHIRER = 'h', // hire them
 	FFIRE1 = 'F', // fire
@@ -61,7 +63,8 @@ enum {
 	FMUL = '*',
 	FDIV = '/',
 	FMOD = '%',
-	FRAND = 'R',
+	FRAND = 'r',
+	FRANDDIR = 'R',
 	FINC = 'X',
 	FDEC = 'x',
 
@@ -102,9 +105,9 @@ enum {
 char *strchr(const char *c, int);
 
 static inline int arity(function f) {
-	if (strchr("0123456789.:;$-|><^v{}DdQU\"JRCHh", f)) return 0;
-	if (strchr(",#@!aAsi?ItTPpqNnjxXKf", f)) return 1;
-	if (strchr("+_*/%=lgc", f)) return 2;
+	if (strchr("0123456789.:;$-|><^v{}DdQU\"JRrCHh", f)) return 0;
+	if (strchr(",#@!aAsi?ItTPpqNnjxXKfz", f)) return 1;
+	if (strchr("+_*/%=lgck", f)) return 2;
 	if (strchr("G", f)) return 3;
 	if (strchr("S", f)) return 4;
 	return -1;
