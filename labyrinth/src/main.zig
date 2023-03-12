@@ -6,6 +6,7 @@ pub fn main() anyerror!void {
     const alloc = std.heap.page_allocator;
 
     var board = try Board.init(
+        \\1-2;D
         \\v  v-----------v
         \\|  |     |     |
         \\|  v---<<|>>---v
@@ -25,8 +26,4 @@ pub fn main() anyerror!void {
     };
     defer labyrinth.deinit();
     _ = try labyrinth.play();
-}
-
-test "basic test" {
-    try std.testing.expectEqual(10, 3 + 7);
 }

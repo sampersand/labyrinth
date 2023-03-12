@@ -14,11 +14,8 @@ velocity: Coordinate = Coordinate.Right,
 allocator: Allocator,
 stack: std.ArrayListUnmanaged(Value),
 args: [Function.MaxArgc]Value = undefined,
-mode: union(enum) {
-    Normal,
-    Integer: IntType,
-    String: *Array,
-} = .Normal,
+mode: union(enum) { Normal, Integer: IntType, String: *Array } = .Normal,
+stepsAhead: usize = 0,
 
 pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!Minotaur {
     return Minotaur{
@@ -90,8 +87,29 @@ pub fn format(
 }
 
 pub fn play(this: *Minotaur, labyrinth: *Labyrinth) PlayError!PlayResult {
+    if (this.stepsAhead != 0) {
+        this.stepsAhead -= 1;
+        return PlayResult.Continue;
+    }
+
     this.step();
-    return this.traverse(labyrinth, try labyrinth.board.get(this.position));
+    const function = try labyrinth.board.get(this.position);
+
+    switch (this.mode) {
+        .Normal => {},
+        .Integer => |*int| {
+            if (parseDigit(function.toByte())) |digit| {
+                int.* = 10 * int.* + digit;
+                return PlayResult.Continue;
+            }
+
+            try this.push(Value.from(int.*));
+            this.mode = .Normal;
+        },
+        .String => @panic("Todo"),
+    }
+
+    return this.traverse(labyrinth, function);
 }
 
 fn setArguments(this: *Minotaur, arity: usize) PlayError!void {
@@ -134,28 +152,23 @@ pub fn clone(this: *Minotaur) Allocator.Error!Minotaur {
     };
 }
 
+fn castInt(comptime T: type, int: IntType) PlayError!T {
+    return std.math.cast(T, int) orelse return error.IntOutOfBounds;
+}
+
 fn jumpn(this: *Minotaur, n: Value) PlayError!void {
     // const CoordI32 = @TypeOf(Coordinate).
     const CoordInt = i32;
     const int = try n.toInt();
-    const scalar = std.math.cast(CoordInt, int) orelse return error.IntOutOfBounds;
-    this.position = this.position.add(.{ .x = this.velocity.x * scalar, .y = this.velocity.y * scalar });
+    const scalar = try castInt(CoordInt, int);
+    this.position = this.position.add(.{
+        .x = this.velocity.x * scalar,
+        .y = this.velocity.y * scalar,
+    });
 }
 
-pub fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayError!PlayResult {
-    switch (this.mode) {
-        .Normal => {},
-        .Integer => |*int| {
-            if (parseDigit(function.toByte())) |digit| {
-                int.* = 10 * int.* + digit;
-                return .Continue;
-            }
-
-            try this.push(Value.fromInt(int.*));
-            this.mode = .Normal;
-        },
-        .String => @panic("Todo"),
-    }
+fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayError!PlayResult {
+    std.debug.assert(this.stepsAhead == 0);
 
     try this.setArguments(function.arity());
     defer this.deinitArgs(function.arity());
@@ -227,9 +240,8 @@ pub fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) Play
             if (function == .DumpValNL) try writer.writeAll("\n");
         },
 
-        // case FSLEEPN:
-        //     hm->steps_ahead += i2v(args[0]);
-        //     break;
+        .Sleep1 => this.stepsAhead = 1,
+        .SleepN => this.stepsAhead = try castInt(usize, try this.args[0].toInt()),
 
         else => @panic("todo"),
     }

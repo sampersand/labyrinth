@@ -40,6 +40,7 @@ pub const Function = enum(u8) {
     Jump1 = 'J',
     JumpN = 'j',
     SleepN = 'z',
+    Sleep1 = 'Z',
     // FGETPOS = 'r',
     // FRETURN = 'R',
 
@@ -111,7 +112,7 @@ pub const Function = enum(u8) {
         return switch (this) {
             .I0, .I1, .I2, .I3, .I4, .I5, .I6, .I7, .I8, .I9 => 0,
             .Dup, .Dup2, .Pop2, .Swap, .StackLen => 0,
-            .MoveH, .MoveV, .Up, .Down, .Left, .Right, .SpeedUp, .SlowDown => 0,
+            .MoveH, .MoveV, .Up, .Down, .Left, .Right, .SpeedUp, .SlowDown, .Sleep1 => 0,
             .Dump, .DumpQ, .Quit0, .Gets, .Str, .Jump1, .RandDir, .Rand, .HireL, .HireR => 0,
 
             .Pop, .DupN, .PopN, .Not, .Chr, .Ord, .ToS, .ToI, .Inc, .Dec => 1,

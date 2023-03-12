@@ -23,6 +23,10 @@ pub fn sub(left: Coordinate, right: Coordinate) Coordinate {
     return .{ .x = left.x - right.x, .y = left.y - right.y };
 }
 
+pub fn equals(this: Coordinate, other: Coordinate) bool {
+    return this.x == other.x and this.y == other.y;
+}
+
 pub fn direction(this: Coordinate) Coordinate {
     return .{
         .x = if (this.x == 0) 0 else @as(i32, if (this.x < 0) -1 else 1),
@@ -45,6 +49,7 @@ test "coord works" {
     var coord = Coordinate.Right;
     std.debug.assert(coord.rotate(.right).equals(Coordinate.Down));
 }
+
 pub fn format(
     this: Coordinate,
     comptime fmt: []const u8,

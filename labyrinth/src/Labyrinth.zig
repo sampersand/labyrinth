@@ -78,6 +78,10 @@ pub fn slayMinotaur(this: *Labyrinth, idx: usize) void {
 pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!void {
     try writer.writeAll("\x1B[1;1H\x1B[2J"); // clear screen
     try this.board.printBoard(this.minotaurs.items, writer);
+    try writer.writeAll("\n");
+    for (this.minotaurs.items) |minotaur, i| {
+        try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
+    }
     std.time.sleep(sleepMs * 1_000_000);
 }
 

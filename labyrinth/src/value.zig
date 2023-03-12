@@ -14,12 +14,12 @@ pub const Value = struct {
 
     _data: DataType,
 
-    pub fn fromInt(int: IntType) Value {
-        return .{ ._data = (@intCast(DataType, int) << 1) | 1 };
-    }
-
-    pub fn fromArray(ary: *Array) Value {
-        return .{ ._data = @intCast(DataType, @ptrToInt(ary)) };
+    pub fn from(val: anytype) Value {
+        return switch (@TypeOf(val)) {
+            IntType, comptime_int => .{ ._data = (@intCast(DataType, val) << 1) | 1 },
+            *Array => .{ ._data = @intCast(DataType, @ptrToInt(val)) },
+            else => unreachable,
+        };
     }
 
     pub fn isInt(this: Value) bool {
