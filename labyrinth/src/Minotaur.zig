@@ -25,10 +25,8 @@ pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!Minotaur {
 }
 
 pub fn deinit(this: *Minotaur) void {
-    for (this.stack.items) |item| {
+    for (this.stack.items) |item|
         item.deinit(this.allocator);
-    }
-
     this.stack.deinit(this.allocator);
 }
 
@@ -44,7 +42,8 @@ pub const StackError = error{StackTooSmall};
 
 pub fn nth(this: *const Minotaur, idx: usize) StackError!Value {
     std.debug.assert(idx != 0);
-    if (this.stack.items.len < idx) return error.StackTooSmall;
+    if (this.stack.items.len < idx)
+        return error.StackTooSmall;
     return this.stack.items[this.stack.items.len - idx];
 }
 
@@ -53,9 +52,6 @@ pub fn dupn(this: *const Minotaur, idx: usize) StackError!Value {
 }
 
 pub fn push(this: *Minotaur, value: Value) Allocator.Error!void {
-    if (false) {
-        @panic("oops");
-    }
     try this.stack.append(this.allocator, value);
 }
 
@@ -64,24 +60,23 @@ pub fn pop(this: *Minotaur) StackError!Value {
 }
 
 pub fn popn(this: *Minotaur, idx: usize) StackError!Value {
-    if (this.stack.items.len < idx) return error.StackTooSmall;
+    if (this.stack.items.len < idx)
+        return error.StackTooSmall;
 
     return switch (idx) {
-        0 => @panic("pop at 0"),
+        0 => @panic("popn(0)"),
         1 => this.stack.pop(),
         2 => this.stack.swapRemove(this.stack.items.len - 2),
-        else => @panic("todo"),
+        else => this.stack.orderedRemove(this.stack.items.len - idx),
     };
 }
 
 pub fn format(
     this: *const Minotaur,
-    comptime fmt: []const u8,
-    options: std.fmt.FormatOptions,
+    comptime _: []const u8,
+    _: std.fmt.FormatOptions,
     writer: anytype,
 ) std.os.WriteError!void {
-    _ = fmt;
-    _ = options;
     try writer.print("Minotaur{{position={any},velocity={any},stack=[", .{ this.position, this.velocity });
     for (this.stack.items) |*value, idx| {
         if (idx != 0) try writer.writeAll(", ");
@@ -130,15 +125,13 @@ fn setArguments(this: *Minotaur, arity: usize) PlayError!void {
     var i: usize = 0;
     errdefer this.deinitArgs(i);
 
-    while (i < arity) : (i += 1) {
+    while (i < arity) : (i += 1)
         this.args[i] = this.pop() catch return error.TooFewArgumentsForFunction;
-    }
 }
 
 fn deinitArgs(this: *Minotaur, arity: usize) void {
-    for (this.args[0..arity]) |arg| {
+    for (this.args[0..arity]) |arg|
         arg.deinit(this.allocator);
-    }
 }
 
 const PlayError = error{
@@ -160,9 +153,8 @@ fn parseDigit(byte: u8) ?IntType {
 
 pub fn clone(this: *const Minotaur) Allocator.Error!Minotaur {
     var stack = try std.ArrayListUnmanaged(Value).initCapacity(this.allocator, this.stack.items.len);
-    for (this.stack.items) |value| {
+    for (this.stack.items) |value|
         try stack.append(this.allocator, value.clone());
-    }
 
     return Minotaur{
         .position = this.position,
@@ -209,7 +201,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .Str => this.mode = .{ .String = try Array.init(this.allocator) },
         .DumpQ, .Dump => {
             var writer = std.io.getStdOut().writer();
-            try writer.print("{any}\n", .{this});
+            try writer.print("{any}\n", .{labyrinth});
             if (function == .DumpQ) return PlayResult{ .Exit = 0 };
         },
         .Quit0 => return PlayResult{ .Exit = 0 },
@@ -222,7 +214,6 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
                 this.velocity = this.velocity.rotate(.right);
             }
         },
-
         .Left => this.velocity = Coordinate.Left,
         .Right => this.velocity = Coordinate.Right,
         .Up => this.velocity = Coordinate.Up,
@@ -233,6 +224,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
             this.velocity = this.velocity.sub(dir);
             if (this.velocity.eql(Coordinate.Origin)) this.velocity = this.velocity.sub(dir);
         },
+
         .Jump1 => this.step(),
         .JumpN => try this.jumpn(this.args[0]),
         .Dup => returnValue = try this.dupn(1),
@@ -245,6 +237,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .StackLen => returnValue = Value.from(
             std.math.cast(IntType, this.stack.items.len) orelse return error.StackTooLarge,
         ),
+
         .IfL, .IfR => if (!this.args[0].isTruthy()) {
             this.velocity = this.velocity.rotate(if (function == .IfR) .right else .left);
         },

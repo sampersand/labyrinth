@@ -28,7 +28,9 @@ pub fn increment(this: *Array) void {
 pub fn decrement(this: *Array, alloc: Allocator) void {
     assert(this.refcount != 0);
     this.refcount -= 1;
-    if (this.refcount == 0) this.deinit(alloc);
+
+    if (this.refcount == 0)
+        this.deinit(alloc);
 }
 
 pub fn deinit(this: *Array, alloc: Allocator) void {
@@ -37,7 +39,9 @@ pub fn deinit(this: *Array, alloc: Allocator) void {
 }
 
 pub fn deinitNoCheck(this: *Array, alloc: Allocator) void {
-    for (this.eles.items) |value| value.deinit(alloc);
+    for (this.eles.items) |value|
+        value.deinit(alloc);
+
     this.eles.deinit(alloc);
     alloc.destroy(this);
 }
@@ -59,9 +63,8 @@ pub fn equals(this: *const Array, other: *const Array) bool {
     if (this.len() != other.len()) return false;
 
     for (this.eles.items) |value, index| {
-        if (!value.equals(other.eles.items[index])) {
+        if (!value.equals(other.eles.items[index]))
             return false;
-        }
     }
 
     return true;
@@ -96,19 +99,14 @@ pub fn parseInt(this: *const Array) ParseIntError!IntType {
 
 pub fn format(
     this: *const Array,
-    comptime fmt: []const u8,
-    options: std.fmt.FormatOptions,
+    comptime _: []const u8,
+    _: std.fmt.FormatOptions,
     writer: anytype,
 ) std.os.WriteError!void {
-    _ = fmt;
-    _ = options;
     try writer.writeAll("[");
 
     for (this.eles.items) |value, idx| {
-        if (idx != 0) {
-            try writer.writeAll(", ");
-        }
-
+        if (idx != 0) try writer.writeAll(", ");
         try writer.print("{}", value);
     }
 
@@ -119,28 +117,9 @@ pub fn print(this: *const Array, writer: anytype) Value.PrintError!void {
     for (this.eles.items) |value| {
         try value.print(writer);
 
-        if (value.classify() == .ary) {
-            try writer.writeAll("\n");
-        }
+        if (value.classify() == .ary) try writer.writeAll("\n");
     }
 }
-
-// pub fn toString(this: *const Array, alloc: Allocator) Allocator.Error!Value {
-
-// }
-
-// array *to_string(VALUE v) {
-//     if (!isint(v)) return ARY(clone(v));
-
-//     char buf[100]; // large enough
-//     snprintf(buf, sizeof(buf), "%lld", INT(v));
-
-//     array *a = aalloc(strlen(buf));
-//     for (int i = 0; buf[i]; ++i)
-//         a->items[a->len++] = i2v(buf[i]);
-
-//     return a;
-// }
 
 const testAlloc = std.testing.allocator;
 test "refcount defaults to 1, len starts as 0" {

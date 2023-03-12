@@ -23,22 +23,12 @@ pub const Value = struct {
         };
     }
 
-    pub fn isInt(this: Value) bool {
-        return this._data & 1 == 1;
-    }
-
-    pub fn asInt(this: Value) IntType {
-        assert(this.isInt());
-        return @intCast(IntType, this._data >> 1);
-    }
-
-    pub fn asArray(this: Value) *Array {
-        assert(!this.isInt());
-        return @intToPtr(*Array, @intCast(usize, this._data));
-    }
-
     pub inline fn classify(this: Value) ValueType {
-        return if (this.isInt()) .{ .int = this.asInt() } else .{ .ary = this.asArray() };
+        return if (this._data & 1 == 1) .{
+            .int = @intCast(IntType, this._data >> 1),
+        } else .{
+            .ary = @intToPtr(*Array, @intCast(usize, this._data)),
+        };
     }
 
     pub fn clone(this: Value) Value {
@@ -60,7 +50,11 @@ pub const Value = struct {
     pub fn isTruthy(this: Value) bool {
         return switch (this.classify()) {
             .int => |int| int != 0,
-            .ary => |ary| ary.eles.items.len != 0,
+            .ary => |ary| switch (ary.eles.items.len) {
+                0 => false,
+                1 => ary.eles.items[0].isTruthy(),
+                else => true,
+            },
         };
     }
 
@@ -72,26 +66,24 @@ pub const Value = struct {
     }
 
     pub fn equals(this: Value, other: Value) bool {
-        if (this._data == other._data) {
+        if (this._data == other._data)
             return true;
-        }
 
-        if (this.isInt() or other.isInt()) {
-            return false;
-        }
-
-        return this.asArray().equals(other.asArray());
+        return switch (this.classify()) {
+            .int => false,
+            .ary => |lhs| switch (other.classify()) {
+                .int => false,
+                .ary => |rhs| lhs.equals(rhs),
+            },
+        };
     }
 
     pub fn format(
         this: Value,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
+        comptime _: []const u8,
+        _: std.fmt.FormatOptions,
         writer: anytype,
     ) std.os.WriteError!void {
-        _ = fmt;
-        _ = options;
-
         switch (this.classify()) {
             .int => |int| try writer.print("{d}", .{int}),
             .ary => |ary| try writer.print("{}", .{ary}),
@@ -101,10 +93,7 @@ pub const Value = struct {
     pub const PrintError = error{IntOutOfBounds} || std.os.WriteError;
     pub fn print(this: Value, writer: anytype) PrintError!void {
         switch (this.classify()) {
-            .int => |int| {
-                const byte = std.math.cast(u8, int) orelse return error.IntOutOfBounds;
-                try writer.writeByte(byte);
-            },
+            .int => |int| try writer.writeByte(std.math.cast(u8, int) orelse return error.IntOutOfBounds),
             .ary => |ary| try ary.print(writer),
         }
     }
@@ -122,7 +111,9 @@ pub const Value = struct {
                 var buf: [255]u8 = undefined;
                 const bytes = std.fmt.bufPrint(&buf, "{d}", .{int}) catch unreachable;
                 var ary = try Array.initCapacity(alloc, bytes.len);
-                for (bytes) |byte| try ary.push(alloc, Value.from(@intCast(IntType, byte)));
+
+                for (bytes) |byte|
+                    try ary.push(alloc, Value.from(@intCast(IntType, byte)));
 
                 return ary;
             },

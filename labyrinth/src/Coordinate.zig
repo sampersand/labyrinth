@@ -52,11 +52,9 @@ test "coord works" {
 
 pub fn format(
     this: Coordinate,
-    comptime fmt: []const u8,
-    options: std.fmt.FormatOptions,
+    comptime _: []const u8,
+    _: std.fmt.FormatOptions,
     writer: anytype,
 ) std.os.WriteError!void {
-    _ = fmt;
-    _ = options;
     try writer.print("({d},{d})", .{ this.x, this.y });
 }
