@@ -51,8 +51,8 @@ pub fn format(
     _ = this;
 }
 
-pub const GetError = error{IntOutOfBounds} || Function.ValidateError;
-pub fn get(this: *const Board, pos: Coordinate) GetError!Function {
+pub const GetError = error{IntOutOfBounds};
+pub fn get(this: *const Board, pos: Coordinate) GetError!u8 {
     // std.debug.print("{d}|{d}\n", pos);
     const y = std.math.cast(usize, pos.y) orelse return error.IntOutOfBounds;
     const x = std.math.cast(usize, pos.x) orelse return error.IntOutOfBounds;
@@ -64,7 +64,7 @@ pub fn get(this: *const Board, pos: Coordinate) GetError!Function {
     const line = this.lines.items[y];
     const byte = if (line.len <= x) return error.IntOutOfBounds else line[x];
 
-    return Function.fromChar(byte);
+    return byte;
 }
 
 pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) std.os.WriteError!void {

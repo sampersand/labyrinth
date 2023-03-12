@@ -6,7 +6,7 @@ pub fn main() anyerror!void {
     const alloc = std.heap.page_allocator;
 
     var board = try Board.init(
-        \\1-2;D
+        \\1-5-"-123"aDD
         \\v  v-----------v
         \\|  |     |     |
         \\|  v---<<|>>---v

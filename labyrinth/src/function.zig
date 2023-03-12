@@ -51,10 +51,10 @@ pub const Function = enum(u8) {
     IfPop = 'T',
     JumpUnless = 'K',
     JumpNUnless = 'k',
-    HireL = 'H', // hire them
-    HireR = 'h', // hire them
-    Fire1 = 'F', // fire
-    FireN = 'f', // fire n
+    SpawnL = 'H', // hire them
+    SpawnR = 'h', // hire them
+    Slay1 = 'F', // fire
+    SlayN = 'f', // fire n
 
     // math
     Add = '+',
@@ -113,7 +113,7 @@ pub const Function = enum(u8) {
             .I0, .I1, .I2, .I3, .I4, .I5, .I6, .I7, .I8, .I9 => 0,
             .Dup, .Dup2, .Pop2, .Swap, .StackLen => 0,
             .MoveH, .MoveV, .Up, .Down, .Left, .Right, .SpeedUp, .SlowDown, .Sleep1 => 0,
-            .Dump, .DumpQ, .Quit0, .Gets, .Str, .Jump1, .RandDir, .Rand, .HireL, .HireR => 0,
+            .Dump, .DumpQ, .Quit0, .Gets, .Str, .Jump1, .RandDir, .Rand, .SpawnL, .SpawnR => 0,
 
             .Pop, .DupN, .PopN, .Not, .Chr, .Ord, .ToS, .ToI, .Inc, .Dec => 1,
             .IfL, .IfR, .IfPop, .JumpUnless, .JumpN, .Quit, .Len => 1,
@@ -123,21 +123,7 @@ pub const Function = enum(u8) {
             .Get => 3,
             .Set => 4,
 
-            .Ary, .Aryend, .Ifpopold, .Fire1, .FireN => @panic("todo"),
+            .Ary, .Aryend, .Ifpopold, .Slay1, .SlayN => @panic("todo"),
         };
     }
 };
-
-// #define MAX_ARGC 4
-
-// char *strchr(const char *c, int);
-
-// static inline int arity(function f) {
-//     if (strchr("0123456789.:;$-|><^v{}DdQU\"JRrCHh", f)) return 0;
-//     if (strchr(",#@!aAsi?ItTPpqNnjxXKfz", f)) return 1;
-//     if (strchr("+_*/%=lgck", f)) return 2;
-//     if (strchr("G", f)) return 3;
-//     if (strchr("S", f)) return 4;
-//     return -1;
-// }
-

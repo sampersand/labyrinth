@@ -86,7 +86,7 @@ pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!voi
 }
 
 fn shouldPrintDebug(_: *const Labyrinth) bool {
-    return true;
+    return false;
 }
 const sleepMs = 25;
 
