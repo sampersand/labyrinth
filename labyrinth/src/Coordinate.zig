@@ -35,13 +35,7 @@ pub fn direction(this: Coordinate) Coordinate {
 
 pub const Direction = enum { left, right };
 pub fn rotate(this: Coordinate, dir: Direction) Coordinate {
-    return if (dir == .left) Coordinate{
-        .x = this.y,
-        .y = -this.x,
-    } else Coordinate{
-        .x = -this.y,
-        .y = this.x,
-    };
+    return if (dir == .left) .{ .x = this.y, .y = -this.x } else .{ .x = -this.y, .y = this.x };
 }
 
 test "coord works" {

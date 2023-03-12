@@ -52,7 +52,7 @@ pub const Value = struct {
             .int => |int| int != 0,
             .ary => |ary| switch (ary.eles.items.len) {
                 0 => false,
-                1 => ary.eles.items[0].isTruthy(),
+                1 => ary.eles.items[0].isTruthy(), // `[0]` is falsey.
                 else => true,
             },
         };
@@ -84,18 +84,18 @@ pub const Value = struct {
         _: std.fmt.FormatOptions,
         writer: anytype,
     ) std.os.WriteError!void {
-        switch (this.classify()) {
-            .int => |int| try writer.print("{d}", .{int}),
-            .ary => |ary| try writer.print("{}", .{ary}),
-        }
+        return switch (this.classify()) {
+            .int => |int| writer.print("{d}", .{int}),
+            .ary => |ary| writer.print("{}", .{ary}),
+        };
     }
 
     pub const PrintError = error{IntOutOfBounds} || std.os.WriteError;
     pub fn print(this: Value, writer: anytype) PrintError!void {
-        switch (this.classify()) {
-            .int => |int| try writer.writeByte(std.math.cast(u8, int) orelse return error.IntOutOfBounds),
-            .ary => |ary| try ary.print(writer),
-        }
+        return switch (this.classify()) {
+            .int => |int| writer.writeByte(std.math.cast(u8, int) orelse return error.IntOutOfBounds),
+            .ary => |ary| ary.print(writer),
+        };
     }
 
     pub fn toInt(this: Value) Array.ParseIntError!IntType {
@@ -108,12 +108,12 @@ pub const Value = struct {
     pub fn toString(this: Value, alloc: Allocator) Allocator.Error!*Array {
         switch (this.classify()) {
             .int => |int| {
-                var buf: [255]u8 = undefined;
+                var buf: [255]u8 = undefined; // 255 is plenty.
                 const bytes = std.fmt.bufPrint(&buf, "{d}", .{int}) catch unreachable;
                 var ary = try Array.initCapacity(alloc, bytes.len);
 
                 for (bytes) |byte|
-                    try ary.push(alloc, Value.from(@intCast(IntType, byte)));
+                    ary.push(alloc, Value.from(@intCast(IntType, byte))) catch unreachable;
 
                 return ary;
             },

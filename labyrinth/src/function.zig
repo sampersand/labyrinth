@@ -96,12 +96,11 @@ pub const Function = enum(u8) {
     Quit = 'q',
     Gets = 'U',
 
-    pub const ValidateError = error{NotAValidFunction};
-
     pub fn toByte(this: Function) u8 {
         return @enumToInt(this);
     }
 
+    pub const ValidateError = error{NotAValidFunction};
     pub fn fromChar(chr: u8) ValidateError!Function {
         return std.meta.intToEnum(Function, chr) catch error.NotAValidFunction;
     }

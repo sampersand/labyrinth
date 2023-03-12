@@ -16,7 +16,11 @@ stack: std.ArrayListUnmanaged(Value),
 args: [Function.MaxArgc]Value = undefined,
 mode: union(enum) { Normal, Integer: IntType, String: *Array } = .Normal,
 stepsAhead: usize = 0,
-prevSteps: [4]Coordinate = [4]Coordinate{ Coordinate.Origin, Coordinate.Origin, Coordinate.Origin, Coordinate.Origin },
+prevSteps: [3]Coordinate = [3]Coordinate{
+    Coordinate.Origin,
+    Coordinate.Origin,
+    Coordinate.Origin,
+},
 
 pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!Minotaur {
     return Minotaur{
@@ -32,19 +36,16 @@ pub fn deinit(this: *Minotaur) void {
 }
 
 pub fn step(this: *Minotaur) void {
+    this.prevSteps[2] = this.prevSteps[1];
+    this.prevSteps[1] = this.prevSteps[0];
+    this.prevSteps[0] = this.position;
     this.position = this.position.add(this.velocity);
 }
 
-pub fn unstep(this: *Minotaur) void {
-    this.position = this.position.sub(this.velocity);
-}
-
 pub const StackError = error{StackTooSmall};
-
 pub fn nth(this: *const Minotaur, idx: usize) StackError!Value {
     std.debug.assert(idx != 0);
-    if (this.stack.items.len < idx)
-        return error.StackTooSmall;
+    if (this.stack.items.len < idx) return error.StackTooSmall;
     return this.stack.items[this.stack.items.len - idx];
 }
 
@@ -54,10 +55,6 @@ pub fn dupn(this: *const Minotaur, idx: usize) StackError!Value {
 
 pub fn push(this: *Minotaur, value: Value) Allocator.Error!void {
     try this.stack.append(this.allocator, value);
-}
-
-pub fn pop(this: *Minotaur) StackError!Value {
-    return this.stack.pop();
 }
 
 pub fn popn(this: *Minotaur, idx: usize) StackError!Value {
@@ -127,7 +124,7 @@ fn setArguments(this: *Minotaur, arity: usize) PlayError!void {
     errdefer this.deinitArgs(i);
 
     while (i < arity) : (i += 1)
-        this.args[i] = this.pop() catch return error.TooFewArgumentsForFunction;
+        this.args[i] = this.popn(1) catch return error.TooFewArgumentsForFunction;
 }
 
 fn deinitArgs(this: *Minotaur, arity: usize) void {
@@ -163,6 +160,7 @@ pub fn clone(this: *const Minotaur) Allocator.Error!Minotaur {
         .allocator = this.allocator,
         .mode = this.mode,
         .stack = stack,
+        .prevSteps = this.prevSteps,
     };
 }
 

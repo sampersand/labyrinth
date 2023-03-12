@@ -54,17 +54,29 @@ pub fn get(this: *const Board, pos: Coordinate) GetError!u8 {
 }
 
 pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) std.os.WriteError!void {
+    const Cursor = struct {
+        idx: usize,
+        age: usize,
+        fn cmp(_: void, l: @This(), r: @This()) bool {
+            return l.idx < r.idx;
+        }
+    };
+    const colors = [4]usize{ 254, 248, 242, 236 };
+
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    var indices = std.ArrayList(usize).initCapacity(allocator, minotaurs.len) catch @panic("oops?");
+    var indices = std.ArrayList(Cursor).initCapacity(allocator, minotaurs.len) catch @panic("oops?");
 
     for (this.lines.items) |line, col| {
         indices.clearRetainingCapacity();
 
         for (minotaurs) |minotaur| {
             if (minotaur.position.y == col)
-                indices.append(@intCast(usize, minotaur.position.x)) catch unreachable;
+                indices.append(.{ .idx = @intCast(usize, minotaur.position.x), .age = 0 }) catch unreachable;
+            for (minotaur.prevSteps) |step, i|
+                if (step.y == col and step.x >= 0)
+                    indices.append(.{ .idx = @intCast(usize, step.x), .age = i + 1 }) catch unreachable;
         }
 
         if (indices.items.len == 0) {
@@ -72,21 +84,22 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
             continue;
         }
 
-        std.sort.sort(usize, indices.items, {}, std.sort.asc(usize));
+        std.sort.sort(Cursor, indices.items, {}, Cursor.cmp);
         var i: usize = 0;
         while (i < indices.items.len) : (i += 1) {
-            if (i != 0 and indices.items[i] == indices.items[i - 1])
+            if (i != 0 and indices.items[i].idx == indices.items[i - 1].idx)
                 continue;
 
-            const start = if (i == 0) 0 else indices.items[i - 1] + 1;
+            const start = if (i == 0) 0 else indices.items[i - 1].idx + 1;
 
-            const len = indices.items[i] - start;
-            try writer.print(
-                "{s}\x1B[7m{c}\x1B[0m",
-                .{ line[start .. start + len], line[indices.items[i]] },
-            );
+            const len = indices.items[i].idx - start;
+            try writer.print("{s}\x1B[48;5;{}m{c}\x1B[0m", .{
+                line[start .. start + len],
+                colors[indices.items[i].age],
+                line[indices.items[i].idx],
+            });
         }
 
-        try writer.print("{s}\n", .{line[indices.items[indices.items.len - 1] + 1 ..]});
+        try writer.print("{s}\n", .{line[indices.items[indices.items.len - 1].idx + 1 ..]});
     }
 }

@@ -6,10 +6,16 @@ const assert = std.debug.assert;
 const Labyrinth = @This();
 
 board: Board,
-options: i32 = 0,
+options: Options = .{},
 minotaurs: std.ArrayList(Minotaur),
 minotaursToSpawn: std.ArrayList(Minotaur),
-rng: std.rand.DefaultPrng = std.rand.DefaultPrng.init(0x42),
+rng: std.rand.DefaultPrng,
+
+pub const Options = struct {
+    printBoard: bool,
+    printMinotaurs: bool,
+    waitForUserInput: bool,
+};
 
 pub fn init(board: Board, alloc: std.mem.Allocator) std.mem.Allocator.Error!Labyrinth {
     var minotaurs = try std.ArrayList(Minotaur).initCapacity(alloc, 8);
@@ -20,9 +26,14 @@ pub fn init(board: Board, alloc: std.mem.Allocator) std.mem.Allocator.Error!Laby
 
     var minotaur = try Minotaur.initCapacity(alloc, 8);
     errdefer minotaur.deinit();
-
     try minotaurs.append(minotaur);
-    return .{ .board = board, .minotaurs = minotaurs, .minotaursToSpawn = minotaursToSpawn };
+
+    return Labyrinth{
+        .board = board,
+        .minotaurs = minotaurs,
+        .minotaursToSpawn = minotaursToSpawn,
+        .rng = std.rand.DefaultPrng.init(@intCast(u64, std.time.milliTimestamp())),
+    };
 }
 
 pub fn deinit(this: *Labyrinth) void {
@@ -66,23 +77,28 @@ pub fn slayMinotaur(this: *Labyrinth, idx: usize) void {
     minotaur.deinit();
 }
 
+const sleepMs = 25;
 pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!void {
     try writer.writeAll("\x1B[1;1H\x1B[2J"); // clear screen
     try this.board.printBoard(this.minotaurs.items, writer);
-    try writer.writeAll("\n");
-    for (this.minotaurs.items) |minotaur, i|
-        try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
+
+    if (this.options & 2 == 0) {
+        try writer.writeAll("\n");
+        for (this.minotaurs.items) |minotaur, i|
+            try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
+    }
+
     std.time.sleep(sleepMs * 1_000_000);
 }
 
 fn shouldPrintDebug(_: *const Labyrinth) bool {
-    return false;
+    return true;
 }
-const sleepMs = 25;
 
 pub fn play(this: *Labyrinth) !i32 {
+    // we have to go one back so we start at the origin.
     for (this.minotaurs.items) |*minotaur|
-        minotaur.unstep();
+        minotaur.position = minotaur.position.sub(minotaur.velocity);
 
     while (true) : ({
         try this.minotaurs.appendSlice(this.minotaursToSpawn.items);

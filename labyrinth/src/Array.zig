@@ -29,8 +29,7 @@ pub fn decrement(this: *Array, alloc: Allocator) void {
     assert(this.refcount != 0);
     this.refcount -= 1;
 
-    if (this.refcount == 0)
-        this.deinit(alloc);
+    if (this.refcount == 0) this.deinitNoCheck(alloc);
 }
 
 pub fn deinit(this: *Array, alloc: Allocator) void {
