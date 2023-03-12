@@ -124,17 +124,13 @@ pub const Value = struct {
         }
     }
 
-    // fn map(this: Value, func: fn(Value, Value) Value) Value {
-
-    // }
-
     pub const MathError = error{ArrayLengthMismatch} || Allocator.Error;
 
     fn mapIt(
         this: Value,
         alloc: Allocator,
         rhs: Value,
-        func: fn (IntType, IntType) IntType,
+        comptime func: fn (IntType, IntType) IntType,
     ) MathError!Value {
         switch (this.classify()) {
             .int => |l| switch (rhs.classify()) {
@@ -189,10 +185,10 @@ pub const Value = struct {
         }.it);
     }
 
-    pub fn mul(this: Value, alloc: Allocator, rhs: Value) MathError!Value {
+    pub fn div(this: Value, alloc: Allocator, rhs: Value) MathError!Value {
         return this.mapIt(alloc, rhs, struct {
             fn it(a: IntType, b: IntType) IntType {
-                return a / b;
+                return @divTrunc(a, b);
             }
         }.it);
     }
@@ -200,7 +196,7 @@ pub const Value = struct {
     pub fn mod(this: Value, alloc: Allocator, rhs: Value) MathError!Value {
         return this.mapIt(alloc, rhs, struct {
             fn it(a: IntType, b: IntType) IntType {
-                return a % b;
+                return @mod(a, b);
             }
         }.it);
     }

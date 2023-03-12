@@ -16,6 +16,7 @@ stack: std.ArrayListUnmanaged(Value),
 args: [Function.MaxArgc]Value = undefined,
 mode: union(enum) { Normal, Integer: IntType, String: *Array } = .Normal,
 stepsAhead: usize = 0,
+prevSteps: [4]Coordinate = [4]Coordinate{ Coordinate.Origin, Coordinate.Origin, Coordinate.Origin, Coordinate.Origin },
 
 pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!Minotaur {
     return Minotaur{

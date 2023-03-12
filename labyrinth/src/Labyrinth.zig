@@ -22,7 +22,7 @@ pub fn init(board: Board, alloc: std.mem.Allocator) std.mem.Allocator.Error!Laby
     errdefer minotaur.deinit();
 
     try minotaurs.append(minotaur);
-    return Labyrinth{ .board = board, .minotaurs = minotaurs, .minotaursToSpawn = minotaursToSpawn };
+    return .{ .board = board, .minotaurs = minotaurs, .minotaursToSpawn = minotaursToSpawn };
 }
 
 pub fn deinit(this: *Labyrinth) void {
