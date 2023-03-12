@@ -107,7 +107,7 @@ pub fn format(
 
     for (this.eles.items) |value, idx| {
         if (idx != 0) try writer.writeAll(", ");
-        try writer.print("{}", value);
+        try writer.print("{}", .{value});
     }
 
     try writer.writeAll("]");

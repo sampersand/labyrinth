@@ -28,12 +28,10 @@ pub fn init(board: Board, alloc: std.mem.Allocator) std.mem.Allocator.Error!Laby
 pub fn deinit(this: *Labyrinth) void {
     this.board.deinit();
 
-    for (this.minotaurs.items) |*minotaur|
-        minotaur.deinit();
+    for (this.minotaurs.items) |*minotaur| minotaur.deinit();
     this.minotaurs.deinit();
 
-    for (this.minotaursToSpawn.items) |*minotaur|
-        minotaur.deinit();
+    for (this.minotaursToSpawn.items) |*minotaur| minotaur.deinit();
     this.minotaursToSpawn.deinit();
 }
 
@@ -52,11 +50,10 @@ pub fn format(
 
     try writer.writeAll("minotaurs=[");
     for (this.minotaurs.items) |minotaur, idx| {
-        if (idx != 0)
-            try writer.writeAll(", ");
+        if (idx != 0) try writer.writeAll(", ");
         try writer.print("{}", .{minotaur});
     }
-    try writer.print("])", .{});
+    try writer.writeAll("])");
 }
 
 pub fn spawnMinotaur(this: *Labyrinth, minotaur: Minotaur) std.mem.Allocator.Error!void {

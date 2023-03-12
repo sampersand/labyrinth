@@ -1,5 +1,4 @@
 const std = @import("std");
-
 const Coordinate = @This();
 
 x: i32 = 0,

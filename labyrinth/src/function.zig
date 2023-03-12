@@ -16,7 +16,7 @@ pub const Function = enum(u8) {
     // mode changing functions
     Str = '\"',
     Ary = '[',
-    Aryend = ']',
+    AryEnd = ']',
 
     // stack manipulation
     Dup = '.',
@@ -123,7 +123,7 @@ pub const Function = enum(u8) {
             .Get => 3,
             .Set => 4,
 
-            .Ary, .Aryend, .Ifpopold, .Slay1, .SlayN => @panic("todo"),
+            .Ary, .AryEnd, .Ifpopold, .Slay1, .SlayN => @panic("todo"),
         };
     }
 };

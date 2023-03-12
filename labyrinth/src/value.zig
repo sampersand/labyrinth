@@ -128,51 +128,129 @@ pub const Value = struct {
 
     // }
 
-    pub fn add(this: Value, alloc: Allocator, rhs: Value) Allocator.Error!Value {
+    pub const MathError = error{ArrayLengthMismatch} || Allocator.Error;
+
+    fn mapIt(
+        this: Value,
+        alloc: Allocator,
+        rhs: Value,
+        func: fn (IntType, IntType) IntType,
+    ) MathError!Value {
         switch (this.classify()) {
             .int => |l| switch (rhs.classify()) {
-                .int => |r| return Value.from(l + r),
-                else => {},
+                .int => |r| return Value.from(func(l, r)),
+                .ary => |a| {
+                    var ary = try Array.initCapacity(alloc, a.len());
+                    for (a.eles.items) |value|
+                        ary.push(alloc, try this.mapIt(alloc, value, func)) catch unreachable;
+                    return Value.from(ary);
+                },
             },
-            else => {},
-        }
-        _ = alloc;
-        @panic("todo");
-    }
+            .ary => |a| switch (rhs.classify()) {
+                .int => {
+                    var ary = try Array.initCapacity(alloc, a.len());
+                    for (a.eles.items) |value|
+                        ary.push(alloc, try value.mapIt(alloc, rhs, func)) catch unreachable;
+                    return Value.from(ary);
+                },
+                .ary => |r| {
+                    if (a.len() != r.len()) return error.ArrayLengthMismatch;
+                    var ary = try Array.initCapacity(alloc, a.len());
 
-    pub fn sub(this: Value, alloc: Allocator, rhs: Value) Allocator.Error!Value {
-        switch (this.classify()) {
-            .int => |l| switch (rhs.classify()) {
-                .int => |r| return Value.from(l - r),
-                else => {},
+                    for (a.eles.items) |lvalue, i|
+                        ary.push(alloc, try lvalue.mapIt(alloc, r.eles.items[i], func)) catch unreachable;
+                    return Value.from(ary);
+                },
             },
-            else => {},
         }
-        _ = alloc;
-        @panic("todo");
     }
 
-    pub fn mul(_: Value, _: Allocator, _: Value) Allocator.Error!Value {
-        @panic("todo");
+    pub fn add(this: Value, alloc: Allocator, rhs: Value) MathError!Value {
+        return this.mapIt(alloc, rhs, struct {
+            fn it(a: IntType, b: IntType) IntType {
+                return a + b;
+            }
+        }.it);
     }
 
-    pub fn div(_: Value, _: Allocator, _: Value) Allocator.Error!Value {
-        @panic("todo");
+    pub fn sub(this: Value, alloc: Allocator, rhs: Value) MathError!Value {
+        return this.mapIt(alloc, rhs, struct {
+            fn it(a: IntType, b: IntType) IntType {
+                return a - b;
+            }
+        }.it);
     }
 
-    pub fn mod(_: Value, _: Allocator, _: Value) Allocator.Error!Value {
-        @panic("todo");
+    pub fn mul(this: Value, alloc: Allocator, rhs: Value) MathError!Value {
+        return this.mapIt(alloc, rhs, struct {
+            fn it(a: IntType, b: IntType) IntType {
+                return a * b;
+            }
+        }.it);
     }
 
-    pub fn cmp(_: Value, _: Value) IntType {
+    pub fn mul(this: Value, alloc: Allocator, rhs: Value) MathError!Value {
+        return this.mapIt(alloc, rhs, struct {
+            fn it(a: IntType, b: IntType) IntType {
+                return a / b;
+            }
+        }.it);
+    }
+
+    pub fn mod(this: Value, alloc: Allocator, rhs: Value) MathError!Value {
+        return this.mapIt(alloc, rhs, struct {
+            fn it(a: IntType, b: IntType) IntType {
+                return a % b;
+            }
+        }.it);
+    }
+
+    pub fn cmp(this: Value, rhs: Value) IntType {
+        _ = this;
+        _ = rhs;
+        // switch (this.classify()) {
+        //     .int => |l| switch (rhs.classify()) {
+        //         .int => |r| return Value.from(l - r),
+        //         .ary => |a| {
+        //             var ary = try Array.initCapacity(alloc, a.len());
+        //             for (a.eles.items) |value|
+        //                 ary.push(alloc, try this.mapIt(alloc, value, func)) catch unreachable;
+        //             return Value.from(ary);
+        //         },
+        //     },
+        //     .ary => |a| switch (rhs.classify()) {
+        //         .int => {
+        //             var ary = try Array.initCapacity(alloc, a.len());
+        //             for (a.eles.items) |value|
+        //                 ary.push(alloc, try value.mapIt(alloc, rhs, func)) catch unreachable;
+        //             return Value.from(ary);
+        //         },
+        //         .ary => |r| {
+        //             if (a.len() != r.len()) return error.ArrayLengthMismatch;
+        //             var ary = try Array.initCapacity(alloc, a.len());
+
+        //             for (a.eles.items) |lvalue, i|
+        //                 ary.push(alloc, try lvalue.mapIt(alloc, r.eles.items[i], func)) catch unreachable;
+        //             return Value.from(ary);
+        //         },
+        //     },
+        // }
+
         @panic("todo");
     }
 
     pub fn chr(this: Value, alloc: Allocator) Allocator.Error!Value {
-        // if ()
-        _ = this;
-        _ = alloc;
-        @panic("todo");
+        switch (this.classify()) {
+            .int => {
+                var ary = try Array.initCapacity(alloc, 1);
+                ary.push(alloc, this) catch unreachable;
+                return Value.from(ary);
+            },
+            .ary => |ary| {
+                ary.increment();
+                return this;
+            },
+        }
     }
 
     pub const OrdError = error{EmptyString};

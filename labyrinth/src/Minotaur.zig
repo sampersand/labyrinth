@@ -140,7 +140,7 @@ const PlayError = error{
     StackTooSmall,
     StackTooLarge,
 } || Board.GetError || std.os.WriteError || Allocator.Error ||
-    Array.ParseIntError || Function.ValidateError || Value.OrdError;
+    Array.ParseIntError || Function.ValidateError || Value.OrdError || Value.MathError;
 
 const PlayResult = union(enum) {
     Continue,
@@ -285,7 +285,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .Gth => returnValue = Value.from(this.args[1].cmp(this.args[0]) > 0),
         .Cmp => returnValue = Value.from(this.args[1].cmp(this.args[0])),
 
-        .Ary, .Aryend, .Ifpopold, .Slay1, .SlayN, .Gets, .Get, .Set => @panic("todo"),
+        .Ary, .AryEnd, .Ifpopold, .Slay1, .SlayN, .Gets, .Get, .Set => @panic("todo"),
 
         .ToI => returnValue = Value.from(try this.args[0].toInt()),
         .ToS => returnValue = Value.from(try this.args[0].toString(this.allocator)),

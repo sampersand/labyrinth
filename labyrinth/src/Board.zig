@@ -40,7 +40,6 @@ pub fn deinit(this: *Board) void {
 
 pub const GetError = error{IntOutOfBounds};
 pub fn get(this: *const Board, pos: Coordinate) GetError!u8 {
-    // std.debug.print("{d}|{d}\n", pos);
     const y = std.math.cast(usize, pos.y) orelse return error.IntOutOfBounds;
     const x = std.math.cast(usize, pos.x) orelse return error.IntOutOfBounds;
 
