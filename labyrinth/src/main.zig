@@ -4,7 +4,8 @@ const Board = @import("Board.zig");
 
 pub fn main() anyerror!void {
     const alloc = std.heap.page_allocator;
-    const args = 
+
+    // const args =
 
     // \\---"BAB"--"BAB"_D.--P--1+--PQ
     // \\1--59";".P--AaD
@@ -14,7 +15,7 @@ pub fn main() anyerror!void {
         \\|     |                       |
         \\|     |       >--"Fizz"3--v   |
         \\>--1-->--h----|           >--3#--$%!--Kp--Q
-        \\         |    >--"Buzz"5--^   J
+        \\         |    >-Z"Buzz"5--^   J
         \\         |               >.n--^
         \\         >---.3%--:5%--*!I----^
         // \\v  v-----------v
@@ -31,7 +32,7 @@ pub fn main() anyerror!void {
     , alloc);
 
     var labyrinth = b: {
-        errdefer board.deinit();
+        errdefer board.deinit(alloc);
         break :b try Labyrinth.init(board, alloc);
     };
     defer labyrinth.deinit();

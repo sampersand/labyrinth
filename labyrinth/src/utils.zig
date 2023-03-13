@@ -1,7 +1,4 @@
-extern fn foo() u8;
-pub fn safeIndex(slice: []anytype) ?@TypeOf(slice[0]) {
-    return null;
+pub fn safeIndex(slice: anytype, idx: usize) ?@TypeOf(slice[0]) {
+    if (slice.len < idx) return null;
+    return slice[idx];
 }
-
-test "
-"

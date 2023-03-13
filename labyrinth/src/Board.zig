@@ -3,39 +3,32 @@ const Allocator = std.mem.Allocator;
 const Function = @import("function.zig").Function;
 const Minotaur = @import("Minotaur.zig");
 const Coordinate = @import("Coordinate.zig");
+const utils = @import("utils.zig");
 const Board = @This();
 
-lines: std.ArrayList([]u8),
+lines: std.ArrayListUnmanaged([]u8),
 
-pub const InitBoardError = Allocator.Error || Function.ValidateError;
-
-pub fn init(source: []const u8, alloc: Allocator) InitBoardError!Board {
-    // allocate the board
-    var board = Board{
-        .lines = try std.ArrayList([]u8).initCapacity(alloc, 8),
-    };
-    // if there's an error anywhere below this, deallocate the board before returning.
-    errdefer board.deinit();
-
-    // split the source into newlines
+fn parseBoard(board: *Board, alloc: Allocator, source: []const u8) Allocator.Error!void {
     var iter = std.mem.split(u8, source, "\n");
     while (iter.next()) |line| {
-        // duplicate the line that we just got (as it's a `[]const u8`)
         var dup = try alloc.dupe(u8, line);
-        errdefer alloc.free(dup); // if there's a problem in the next statement, free the dup line.
+        errdefer alloc.free(dup);
 
-        // Add it to the end of the list of lines.
-        try board.lines.append(@ptrCast([]u8, dup));
+        try board.lines.append(alloc, @ptrCast([]u8, dup));
     }
+}
+
+pub fn init(source: []const u8, alloc: Allocator) Allocator.Error!Board {
+    var board = Board{ .lines = try std.ArrayListUnmanaged([]u8).initCapacity(alloc, 8) };
+    errdefer board.deinit(alloc);
+    try board.parseBoard(alloc, source);
 
     return board;
 }
 
-pub fn deinit(this: *Board) void {
-    for (this.lines.items) |line|
-        this.lines.allocator.free(line);
-
-    this.lines.deinit();
+pub fn deinit(this: *Board, alloc: Allocator) void {
+    for (this.lines.items) |line| alloc.free(line);
+    this.lines.deinit(alloc);
 }
 
 pub const GetError = error{IntOutOfBounds};
@@ -43,14 +36,8 @@ pub fn get(this: *const Board, pos: Coordinate) GetError!u8 {
     const y = std.math.cast(usize, pos.y) orelse return error.IntOutOfBounds;
     const x = std.math.cast(usize, pos.x) orelse return error.IntOutOfBounds;
 
-    if (this.lines.items.len <= y)
-        return error.IntOutOfBounds;
-
-    const line = this.lines.items[y];
-    if (line.len <= x)
-        return error.IntOutOfBounds;
-
-    return line[x];
+    const line = utils.safeIndex(this.lines.items, y) orelse return error.IntOutOfBounds;
+    return utils.safeIndex(line, x) orelse return error.IntOutOfBounds;
 }
 
 pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) std.os.WriteError!void {

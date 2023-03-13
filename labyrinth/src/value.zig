@@ -27,7 +27,7 @@ pub const Value = struct {
         return if (this._data & 1 == 1) .{
             .int = @intCast(IntType, this._data >> 1),
         } else .{
-            .ary = @intToPtr(*Array, @intCast(usize, this._data)),
+            .ary = @intToPtr(*Array, @intCast(usize, @intCast(u64, this._data))),
         };
     }
 

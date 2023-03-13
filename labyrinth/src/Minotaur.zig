@@ -16,6 +16,7 @@ stack: std.ArrayListUnmanaged(Value),
 args: [Function.MaxArgc]Value = undefined,
 mode: union(enum) { Normal, Integer: IntType, String: *Array } = .Normal,
 stepsAhead: usize = 0,
+exitStatus: ?i32 = null,
 prevSteps: [3]Coordinate = [3]Coordinate{
     Coordinate.Origin,
     Coordinate.Origin,
@@ -36,6 +37,7 @@ pub fn deinit(this: *Minotaur) void {
 }
 
 pub fn step(this: *Minotaur) void {
+    std.debug.assert(!this.hasExited());
     this.prevSteps[2] = this.prevSteps[1];
     this.prevSteps[1] = this.prevSteps[0];
     this.prevSteps[0] = this.position;
@@ -47,6 +49,10 @@ pub fn nth(this: *const Minotaur, idx: usize) StackError!Value {
     std.debug.assert(idx != 0);
     if (this.stack.items.len < idx) return error.StackTooSmall;
     return this.stack.items[this.stack.items.len - idx];
+}
+
+pub fn hasExited(this: *const Minotaur) bool {
+    return this.exitStatus != null;
 }
 
 pub fn dupn(this: *const Minotaur, idx: usize) StackError!Value {
@@ -84,10 +90,10 @@ pub fn format(
     try writer.print("]}}", .{});
 }
 
-pub fn play(this: *Minotaur, labyrinth: *Labyrinth) PlayError!PlayResult {
+pub fn play(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
     if (this.stepsAhead != 0) {
         this.stepsAhead -= 1;
-        return PlayResult.Continue;
+        return;
     }
 
     this.step();
@@ -98,7 +104,7 @@ pub fn play(this: *Minotaur, labyrinth: *Labyrinth) PlayError!PlayResult {
         .Integer => |*int| {
             if (parseDigit(chr)) |digit| {
                 int.* = 10 * int.* + digit;
-                return PlayResult.Continue;
+                return;
             }
 
             try this.push(Value.from(int.*));
@@ -112,7 +118,7 @@ pub fn play(this: *Minotaur, labyrinth: *Labyrinth) PlayError!PlayResult {
                 this.mode = .Normal;
             }
 
-            return PlayResult.Continue;
+            return;
         },
     }
 
@@ -139,11 +145,6 @@ const PlayError = error{
     StackTooLarge,
 } || Board.GetError || std.os.WriteError || Allocator.Error ||
     Array.ParseIntError || Function.ValidateError || Value.OrdError || Value.MathError;
-
-const PlayResult = union(enum) {
-    Continue,
-    Exit: i32,
-};
 
 fn parseDigit(byte: u8) ?IntType {
     return if ('0' <= byte and byte <= '9') @as(IntType, byte - '0') else null;
@@ -186,7 +187,7 @@ fn jumpn(this: *Minotaur, n: Value) PlayError!void {
     });
 }
 
-fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayError!PlayResult {
+fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayError!void {
     std.debug.assert(this.stepsAhead == 0);
 
     try this.setArguments(function.arity());
@@ -201,10 +202,10 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .DumpQ, .Dump => {
             var writer = std.io.getStdOut().writer();
             try writer.print("{any}\n", .{labyrinth});
-            if (function == .DumpQ) return PlayResult{ .Exit = 0 };
+            if (function == .DumpQ) this.exitStatus = 0;
         },
-        .Quit0 => return PlayResult{ .Exit = 0 },
-        .Quit => return PlayResult{ .Exit = try castInt(i32, try this.args[0].toInt()) },
+        .Quit0 => this.exitStatus = 0,
+        .Quit => this.exitStatus = try castInt(i32, try this.args[0].toInt()),
 
         .MoveH, .MoveV => {
             const perpendicular = 0 != if (function == .MoveH) this.velocity.x else this.velocity.y;
@@ -254,7 +255,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
 
         .DumpValNL, .DumpVal => {
             var writer = std.io.getStdOut().writer();
-            try writer.print("{}", this.args[0]);
+            try writer.print("{}", .{this.args[0]});
             if (function == .DumpValNL) try writer.writeAll("\n");
         },
 
@@ -278,7 +279,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .Div => returnValue = try this.args[1].div(this.allocator, this.args[0]),
         .Mod => returnValue = try this.args[1].mod(this.allocator, this.args[0]),
 
-        .Not => returnValue = Value.from(!this.args[1].isTruthy()),
+        .Not => returnValue = Value.from(!this.args[0].isTruthy()),
         .Eql => returnValue = Value.from(this.args[1].equals(this.args[0])),
         .Lth => returnValue = Value.from(this.args[1].cmp(this.args[0]) < 0),
         .Gth => returnValue = Value.from(this.args[1].cmp(this.args[0]) > 0),
@@ -297,6 +298,4 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
     }
 
     if (returnValue) |value| try this.push(value);
-
-    return PlayResult.Continue;
 }
