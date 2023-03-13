@@ -61,9 +61,9 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
         for (minotaurs) |minotaur| {
             if (minotaur.position.y == col)
                 indices.append(.{ .idx = @intCast(usize, minotaur.position.x), .age = 0 }) catch unreachable;
-            for (minotaur.prevSteps) |step, i|
-                if (step.y == col and step.x >= 0)
-                    indices.append(.{ .idx = @intCast(usize, step.x), .age = i + 1 }) catch unreachable;
+            for (minotaur.prevPositions) |pos, i|
+                if (pos.y == col and pos.x >= 0)
+                    indices.append(.{ .idx = @intCast(usize, pos.x), .age = i + 1 }) catch unreachable;
         }
 
         if (indices.items.len == 0) {

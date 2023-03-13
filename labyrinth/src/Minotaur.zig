@@ -17,7 +17,7 @@ args: [Function.MaxArgc]Value = undefined,
 mode: union(enum) { Normal, Integer: IntType, String: *Array } = .Normal,
 stepsAhead: usize = 0,
 exitStatus: ?i32 = null,
-prevSteps: [3]Coordinate = [3]Coordinate{
+prevPositions: [3]Coordinate = [3]Coordinate{
     Coordinate.Origin,
     Coordinate.Origin,
     Coordinate.Origin,
@@ -36,11 +36,11 @@ pub fn deinit(this: *Minotaur) void {
     this.stack.deinit(this.allocator);
 }
 
-pub fn step(this: *Minotaur) void {
+pub fn advance(this: *Minotaur) void {
     std.debug.assert(!this.hasExited());
-    this.prevSteps[2] = this.prevSteps[1];
-    this.prevSteps[1] = this.prevSteps[0];
-    this.prevSteps[0] = this.position;
+    this.prevPositions[2] = this.prevPositions[1];
+    this.prevPositions[1] = this.prevPositions[0];
+    this.prevPositions[0] = this.position;
     this.position = this.position.add(this.velocity);
 }
 
@@ -96,7 +96,7 @@ pub fn play(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
         return;
     }
 
-    this.step();
+    this.advance();
     const chr = try labyrinth.board.get(this.position);
 
     switch (this.mode) {
@@ -161,7 +161,7 @@ pub fn clone(this: *const Minotaur) Allocator.Error!Minotaur {
         .allocator = this.allocator,
         .mode = this.mode,
         .stack = stack,
-        .prevSteps = this.prevSteps,
+        .prevPositions = this.prevPositions,
     };
 }
 
@@ -225,7 +225,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
             if (this.velocity.eql(Coordinate.Origin)) this.velocity = this.velocity.sub(dir);
         },
 
-        .Jump1 => this.step(),
+        .Jump1 => this.advance(),
         .JumpN => try this.jumpn(this.args[0]),
         .Dup => returnValue = try this.dupn(1),
         .Dup2 => returnValue = try this.dupn(2),
@@ -242,7 +242,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
             this.velocity = this.velocity.rotate(if (function == .IfR) .right else .left);
         },
         .IfPop => _ = try this.popn(if (this.args[0].isTruthy()) 2 else 1),
-        .JumpUnless => if (!this.args[0].isTruthy()) this.step(),
+        .JumpUnless => if (!this.args[0].isTruthy()) this.advance(),
         .JumpNUnless => if (!this.args[0].isTruthy()) try this.jumpn(this.args[1]),
 
         .Rand => returnValue = Value.from(labyrinth.rng.random().int(IntType)),

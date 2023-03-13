@@ -77,8 +77,10 @@ pub fn spawnMinotaur(this: *Labyrinth, minotaur: Minotaur) std.mem.Allocator.Err
 
 pub fn slayMinotaur(this: *Labyrinth, idx: usize) void {
     assert(idx < this.minotaurs.items.len);
-    assert(this.minotaurs.items.len != 1);
-    var minotaur = this.minotaurs.swapRemove(idx);
+
+    const isLast = this.minotaurs.items.len == 1;
+    var minotaur = if (isLast) this.minotaurs.pop() else this.minotaurs.swapRemove(idx);
+    if (isLast) this.exitStatus = minotaur.exitStatus;
     minotaur.deinit();
 }
 
@@ -119,12 +121,12 @@ fn stepAllMinotaurs(this: *Labyrinth) !void {
     while (idx < this.minotaurs.items.len) {
         var minotaur = &this.minotaurs.items[idx];
         try minotaur.play(this);
+
         if (minotaur.hasExited()) {
-            if (this.minotaurs.items.len == 1) {
-                this.exitStatus = minotaur.exitStatus;
-                break;
-            } else this.slayMinotaur(idx);
-        } else idx += 1;
+            this.slayMinotaur(idx);
+        } else {
+            idx += 1;
+        }
     }
 }
 
@@ -134,10 +136,12 @@ pub fn play(this: *Labyrinth) !void {
         minotaur.position = minotaur.position.sub(minotaur.velocity);
 
     while (!this.isDone()) {
+        try this.debugPrintBoard();
         try this.stepAllMinotaurs();
         try this.addNewMinotaurs();
-        try this.debugPrintBoard();
     }
+
+    try this.debugPrintBoard();
 }
 
 // pub fn triggerError(this: *Labyrinth, cause: error, context: anytype) void {
