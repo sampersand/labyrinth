@@ -1,0 +1,7 @@
+C!--?--"usage: [program] integer"P--1q
+    |
+    0
+    |
+    1
+    |
+    >3@

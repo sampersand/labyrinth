@@ -18,11 +18,11 @@ fn parseBoard(board: *Board, alloc: Allocator, source: []const u8) Allocator.Err
     }
 }
 
-pub fn init(source: []const u8, alloc: Allocator) Allocator.Error!Board {
+pub fn init(alloc: Allocator, source: []const u8) Allocator.Error!Board {
     var board = Board{ .lines = try std.ArrayListUnmanaged([]u8).initCapacity(alloc, 8) };
     errdefer board.deinit(alloc);
-    try board.parseBoard(alloc, source);
 
+    try board.parseBoard(alloc, source);
     return board;
 }
 
@@ -78,7 +78,6 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
                 continue;
 
             const start = if (i == 0) 0 else indices.items[i - 1].idx + 1;
-
             const len = indices.items[i].idx - start;
             try writer.print("{s}\x1B[48;5;{}m{c}\x1B[0m", .{
                 line[start .. start + len],

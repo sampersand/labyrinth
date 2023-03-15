@@ -1,4 +1,6 @@
 const std = @import("std");
+const utils = @import("utils.zig");
+const Debugger = @import("Debugger.zig");
 const Board = @import("Board.zig");
 const Minotaur = @import("Minotaur.zig");
 const Allocator = std.mem.Allocator;
@@ -12,12 +14,14 @@ minotaurs: std.ArrayListUnmanaged(Minotaur),
 minotaursToSpawn: std.ArrayListUnmanaged(Minotaur),
 allocator: Allocator,
 exitStatus: ?i32 = null,
+debugger: Debugger,
 rng: std.rand.DefaultPrng,
 
 pub const Options = struct {
     printBoard: bool = false,
     printMinotaurs: bool = false,
     waitForUserInput: bool = false,
+    sleepMs: u32 = 25,
 };
 
 pub fn init(board: Board, alloc: Allocator) Allocator.Error!Labyrinth {
@@ -33,6 +37,7 @@ pub fn init(board: Board, alloc: Allocator) Allocator.Error!Labyrinth {
 
     return Labyrinth{
         .board = board,
+        .debugger = .{},
         .allocator = alloc,
         .minotaurs = minotaurs,
         .minotaursToSpawn = minotaursToSpawn,
@@ -71,8 +76,8 @@ pub fn format(
     try writer.writeAll("])");
 }
 
-pub fn spawnMinotaur(this: *Labyrinth, minotaur: Minotaur) std.mem.Allocator.Error!void {
-    return this.minotaursToSpawn.append(this.allocator, minotaur);
+pub fn spawnMinotaur(this: *Labyrinth, minotaur: Minotaur) Allocator.Error!void {
+    try this.minotaursToSpawn.append(this.allocator, minotaur);
 }
 
 pub fn slayMinotaur(this: *Labyrinth, idx: usize) void {
@@ -84,9 +89,9 @@ pub fn slayMinotaur(this: *Labyrinth, idx: usize) void {
     minotaur.deinit();
 }
 
-const sleepMs = 25;
 pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!void {
-    try writer.writeAll("\x1B[1;1H\x1B[2J"); // clear screen
+    std.time.sleep(this.options.sleepMs * 1_000_000);
+    try utils.clearScreen(writer);
     try this.board.printBoard(this.minotaurs.items, writer);
 
     if (this.options.printMinotaurs) {
@@ -94,12 +99,6 @@ pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!voi
         for (this.minotaurs.items) |minotaur, i|
             try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
     }
-
-    std.time.sleep(sleepMs * 1_000_000);
-}
-
-fn shouldPrintDebug(_: *const Labyrinth) bool {
-    return true;
 }
 
 fn addNewMinotaurs(this: *Labyrinth) Allocator.Error!void {
@@ -108,8 +107,9 @@ fn addNewMinotaurs(this: *Labyrinth) Allocator.Error!void {
 }
 
 fn debugPrintBoard(this: *const Labyrinth) !void {
-    if (this.options.printBoard)
-        try this.debugPrint(std.io.getStdOut().writer());
+    if (!this.options.printBoard) return;
+    try this.debugPrint(std.io.getStdOut().writer());
+    std.time.sleep(this.options.sleepMs * 1_000_000);
 }
 
 fn isDone(this: *const Labyrinth) bool {
@@ -131,19 +131,21 @@ fn stepAllMinotaurs(this: *Labyrinth) !void {
 }
 
 pub fn play(this: *Labyrinth) !void {
+    try this.debugPrintBoard();
+
     // we have to go one back so we start at the origin.
     for (this.minotaurs.items) |*minotaur|
         minotaur.position = minotaur.position.sub(minotaur.velocity);
 
     while (!this.isDone()) {
-        try this.debugPrintBoard();
         try this.stepAllMinotaurs();
         try this.addNewMinotaurs();
+        try this.debugPrintBoard();
     }
-
-    try this.debugPrintBoard();
 }
 
-// pub fn triggerError(this: *Labyrinth, cause: error, context: anytype) void {
-
-// }
+pub fn triggerError(this: *Labyrinth, err: anytype, context: anytype) @TypeOf(err) {
+    std.log.err("error: {} (context: {})", .{ err, context });
+    this.debugger.takeInput(this) catch @panic("unable to do debugger"); //: {}", null, .{e});
+    return err;
+}

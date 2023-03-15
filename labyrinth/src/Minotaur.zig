@@ -122,7 +122,8 @@ pub fn play(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
         },
     }
 
-    return this.traverse(labyrinth, try Function.fromChar(chr));
+    return this.traverse(labyrinth, Function.fromChar(chr) catch |err| return labyrinth.triggerError(err, .{}));
+    // return this.traverse(labyrinth, try Function.fromChar(chr));
 }
 
 fn setArguments(this: *Minotaur, arity: usize) PlayError!void {

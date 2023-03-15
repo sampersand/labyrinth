@@ -1,2 +1,75 @@
+const std = @import("std");
+const Labyrinth = @import("Labyrinth.zig");
+const utils = @import("utils.zig");
 const Debugger = @This();
 
+prevCommand: Command = Command.noop,
+
+test "it works" {
+    var tokens = std.mem.tokenize(u8, "dump", " ");
+    const cmd = tokens.next() orelse @panic("oops");
+    _ = cmd;
+}
+const Command = union(enum) {
+    const Names = enum { dump, jump };
+    // Step: struct { which: usize,
+    dump: ?usize,
+    jump: struct { which: usize, to: @import("Coordinate.zig") },
+    noop: void,
+
+    pub const ParseError = error{ UnknownCommandName, TooFewArgs } || std.fmt.ParseIntError;
+
+    fn read(comptime T: type, in: ?[]const u8) !T {
+        _ = in;
+        // return std.fmt.parseInt(usize, in orelse return error.TooFewArgs);
+        return undefined;
+    }
+
+    fn parse(line: []const u8) ParseError!?Command {
+        var tokens = std.mem.tokenize(u8, line, &std.ascii.whitespace);
+        const cmd = tokens.next() orelse return null;
+
+        switch (std.meta.stringToEnum(Names, cmd) orelse return error.UnknownCommandName) {
+            .dump => {
+                const which = if (tokens.next()) |arg| try std.fmt.parseInt(usize, arg, 10) else null;
+                return Command{ .dump = which };
+            },
+            .jump => {
+                const which = try read(usize, tokens.next());
+                const x = try std.fmt.parseInt(i32, tokens.next() orelse return error.TooFewArgs, 10);
+                const y = try std.fmt.parseInt(i32, tokens.next() orelse return error.TooFewArgs, 10);
+                return .{ .jump = .{ .which = which, .to = .{ .x = x, .y = y } } };
+            },
+        }
+    }
+
+    pub fn run(this: Command, labyrinth: *Labyrinth) !void {
+        switch (this) {
+            .noop => {},
+            .dump => |which| {
+                const stdout = std.io.getStdOut().writer();
+                if (which) |idx| {
+                    const minotaur = utils.safeIndex(labyrinth.minotaurs.items, idx) orelse return error.IndexDoesntExist;
+                    try stdout.print("{}\n", .{minotaur});
+                } else {
+                    try stdout.print("{}\n", .{labyrinth});
+                }
+            },
+            .jump => |j| {
+                var minotaur = utils.safeIndex(labyrinth.minotaurs.items, j.which) orelse return error.IndexDoesntExist;
+                minotaur.position = j.to;
+            },
+        }
+    }
+};
+
+pub fn takeInput(this: *Debugger, labyrinth: *Labyrinth) !void {
+    const line = try utils.readLine(labyrinth.allocator, 1024);
+    defer {
+        if (line) |l| labyrinth.allocator.free(l);
+    }
+
+    const command = try Command.parse(line orelse "") orelse this.prevCommand;
+    this.prevCommand = command;
+    try command.run(labyrinth);
+}

@@ -41,6 +41,7 @@ pub const Function = enum(u8) {
     JumpN = 'j',
     SleepN = 'z',
     Sleep1 = 'Z',
+    RandDir = 'R',
     // FGETPOS = 'r',
     // FRETURN = 'R',
 
@@ -49,10 +50,10 @@ pub const Function = enum(u8) {
     IfL = 'I',
     Ifpopold = 't',
     IfPop = 'T',
-    JumpUnless = 'K',
-    JumpNUnless = 'k',
-    SpawnL = 'H', // hire them
-    SpawnR = 'h', // hire them
+    JumpUnless = 'H',
+    JumpNUnless = 'h',
+    SpawnL = 'm', // hire them
+    SpawnR = 'M', // hire them
     Slay1 = 'F', // fire
     SlayN = 'f', // fire n
 
@@ -62,10 +63,9 @@ pub const Function = enum(u8) {
     Mul = '*',
     Div = '/',
     Mod = '%',
-    Rand = 'r',
-    RandDir = 'R',
     Inc = 'X',
     Dec = 'x',
+    Rand = 'r',
 
     // comparisons
     Eql = '=',
