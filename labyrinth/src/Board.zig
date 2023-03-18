@@ -56,7 +56,7 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
     const allocator = arena.allocator();
     var indices = std.ArrayList(Cursor).initCapacity(allocator, minotaurs.len) catch @panic("oops?");
 
-    try writer.print("> {s}\n", .{this.filename});
+    try writer.print("file: {s}\n", .{this.filename});
     for (this.lines.items) |line, col| {
         indices.clearRetainingCapacity();
 

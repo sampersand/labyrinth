@@ -7,6 +7,8 @@ const assert = std.debug.assert;
 
 const Labyrinth = @This();
 
+pub const MinotaurId = usize;
+
 board: Board,
 options: Options = .{},
 minotaurs: std.ArrayListUnmanaged(Minotaur),
@@ -79,11 +81,11 @@ pub fn spawnMinotaur(this: *Labyrinth, minotaur: Minotaur) Allocator.Error!void 
     try this.minotaursToSpawn.append(this.allocator, minotaur);
 }
 
-pub fn slayMinotaur(this: *Labyrinth, idx: usize) void {
-    assert(idx < this.minotaurs.items.len);
+pub fn slayMinotaur(this: *Labyrinth, id: MinotaurId) MinotaurGetError!void {
+    if (this.minotaurs.items.len <= id) return error.MinotaurDoesntExist;
 
     const isLast = this.minotaurs.items.len == 1;
-    var minotaur = if (isLast) this.minotaurs.pop() else this.minotaurs.swapRemove(idx);
+    var minotaur = if (isLast) this.minotaurs.pop() else this.minotaurs.swapRemove(id);
     if (isLast) this.exitStatus = minotaur.exitStatus;
     minotaur.deinit();
 }
@@ -111,22 +113,43 @@ fn debugPrintBoard(this: *const Labyrinth) !void {
     std.time.sleep(this.options.sleepMs * 1_000_000);
 }
 
+pub fn printBoard(this: *const Labyrinth, writer: anytype) !void {
+    try this.board.printBoard(this.minotaurs.items, writer);
+}
+
+pub fn printMinotaurs(this: *const Labyrinth, writer: anytype) !void {
+    for (this.minotaurs.items) |minotaur, i|
+        try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
+}
+
 fn isDone(this: *const Labyrinth) bool {
     return this.exitStatus != null;
 }
 
-fn stepAllMinotaurs(this: *Labyrinth) !void {
-    var idx: usize = 0;
-    while (idx < this.minotaurs.items.len) {
-        var minotaur = &this.minotaurs.items[idx];
-        try minotaur.play(this);
+pub const MinotaurGetError = error{MinotaurDoesntExist};
+pub fn getMinotaur(this: *Labyrinth, id: MinotaurId) MinotaurGetError!*Minotaur {
+    if (this.minotaurs.items.len <= id) return error.MinotaurDoesntExist;
+    return &this.minotaurs.items[id];
+}
 
-        if (minotaur.hasExited()) {
-            this.slayMinotaur(idx);
-        } else {
-            idx += 1;
-        }
+// returns whether the minotaur is still alive.
+pub fn stepMinotaur(this: *Labyrinth, id: MinotaurId) !bool {
+    var minotaur = try this.getMinotaur(id);
+    try minotaur.step(this);
+
+    if (!minotaur.hasExited()) return true;
+    this.slayMinotaur(id) catch unreachable;
+    return false;
+}
+
+pub fn stepAllMinotaurs(this: *Labyrinth) !void {
+    var idx: usize = 0;
+
+    while (idx < this.minotaurs.items.len) {
+        if (try this.stepMinotaur(idx)) idx += 1;
     }
+
+    try this.addNewMinotaurs();
 }
 
 pub fn play(this: *Labyrinth) !void {
@@ -134,11 +157,10 @@ pub fn play(this: *Labyrinth) !void {
 
     // we have to go one back so we start at the origin.
     for (this.minotaurs.items) |*minotaur|
-        minotaur.position = minotaur.position.sub(minotaur.velocity);
+        minotaur.position = try minotaur.position.sub(minotaur.velocity);
 
     while (!this.isDone()) {
         try this.stepAllMinotaurs();
-        try this.addNewMinotaurs();
         try this.debugPrintBoard();
     }
 }

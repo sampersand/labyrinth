@@ -18,7 +18,8 @@ pub fn main() !u8 {
     defer labyrinth.deinit();
 
     if (args.options.debug) {
-        try Debugger.init(&labyrinth).run();
+        var debugger = Debugger.init(&labyrinth);
+        try debugger.run();
         return 0;
     } else {
         _ = try labyrinth.play();

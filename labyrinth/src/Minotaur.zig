@@ -88,7 +88,7 @@ pub fn format(
     try writer.print("]}}", .{});
 }
 
-pub fn play(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
+pub fn step(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
     if (this.stepsAhead != 0) {
         this.stepsAhead -= 1;
         return;
@@ -215,6 +215,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .MoveH, .MoveV => {
             const perpendicular = 0 != if (function == .MoveH) this.velocity.x else this.velocity.y;
             if (!perpendicular) {
+                // TODO: when `@cold` comes out make the `!perpendicular` branch cold.
                 try labyrinth.spawnMinotaur(try this.cloneRotate(.Left));
                 this.velocity = this.velocity.rotate(.Right);
             }
