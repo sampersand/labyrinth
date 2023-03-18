@@ -16,7 +16,7 @@ stack: std.ArrayListUnmanaged(Value),
 args: [Function.MaxArgc]Value = undefined,
 mode: union(enum) { Normal, Integer: IntType, String: *Array } = .Normal,
 stepsAhead: usize = 0,
-exitStatus: ?i32 = null,
+exitStatus: ?u8 = null,
 prevPositions: [3]Coordinate = [3]Coordinate{
     Coordinate.Origin,
     Coordinate.Origin,
@@ -206,7 +206,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
             if (function == .DumpQ) this.exitStatus = 0;
         },
         .Quit0 => this.exitStatus = 0,
-        .Quit => this.exitStatus = try castInt(i32, try this.args[0].toInt()),
+        .Quit => this.exitStatus = try castInt(u8, try this.args[0].toInt()),
 
         .MoveH, .MoveV => {
             const perpendicular = 0 != if (function == .MoveH) this.velocity.x else this.velocity.y;

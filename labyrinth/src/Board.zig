@@ -6,6 +6,7 @@ const Coordinate = @import("Coordinate.zig");
 const utils = @import("utils.zig");
 const Board = @This();
 
+filename: []const u8,
 lines: std.ArrayListUnmanaged([]u8),
 
 fn parseBoard(board: *Board, alloc: Allocator, source: []const u8) Allocator.Error!void {
@@ -18,8 +19,11 @@ fn parseBoard(board: *Board, alloc: Allocator, source: []const u8) Allocator.Err
     }
 }
 
-pub fn init(alloc: Allocator, source: []const u8) Allocator.Error!Board {
-    var board = Board{ .lines = try std.ArrayListUnmanaged([]u8).initCapacity(alloc, 8) };
+pub fn init(alloc: Allocator, filename: []const u8, source: []const u8) Allocator.Error!Board {
+    var board = Board{
+        .filename = filename,
+        .lines = try std.ArrayListUnmanaged([]u8).initCapacity(alloc, 8),
+    };
     errdefer board.deinit(alloc);
 
     try board.parseBoard(alloc, source);
@@ -55,6 +59,7 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
     const allocator = arena.allocator();
     var indices = std.ArrayList(Cursor).initCapacity(allocator, minotaurs.len) catch @panic("oops?");
 
+    try writer.print("> {s}\n", .{this.filename});
     for (this.lines.items) |line, col| {
         indices.clearRetainingCapacity();
 

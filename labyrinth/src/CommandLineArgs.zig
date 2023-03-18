@@ -1,37 +1,49 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const This = @This();
+const CommandLineArgs = @This();
+const Labyrinth = @import("Labyrinth.zig");
+const Board = @import("Board.zig");
+const utils = @import("utils.zig");
 
 iter: std.process.ArgIterator,
-alloc: Allocator,
 programName: []const u8,
-debug: bool = false,
-exprs: std.ArrayListUnmanaged([]const u8) = .{},
-files: std.ArrayListUnmanaged([]const u8) = .{},
+alloc: Allocator,
+options: Labyrinth.Options = .{},
+fileName: ?[]const u8 = null,
+expr: ?[]const u8 = null,
 
-pub fn init(alloc: Allocator) !This {
+pub fn init(alloc: Allocator) !CommandLineArgs {
     var iter = try std.process.ArgIterator.initWithAllocator(alloc);
     const programName = iter.next() orelse return error.NoProgramName;
 
-    return This{
-        .iter = iter,
-        .alloc = alloc,
-        .programName = programName,
-    };
+    return CommandLineArgs{ .alloc = alloc, .iter = iter, .programName = programName };
 }
 
-pub fn deinit(this: *This) void {
+pub fn createLabyrinth(this: CommandLineArgs) !Labyrinth {
+    var board: Board = undefined;
+
+    if (this.fileName) |fileName| {
+        var contents = try utils.readFile(this.alloc, fileName);
+        defer this.alloc.free(contents);
+        board = try Board.init(this.alloc, fileName, contents);
+    } else if (this.expr) |expr| {
+        board = try Board.init(this.alloc, "-e", expr);
+    } else {
+        this.stop(.err, "either `-e` or a filename must be given", .{});
+    }
+
+    errdefer board.deinit(this.alloc);
+
+    return try Labyrinth.init(this.alloc, board, this.options);
+}
+
+pub fn deinit(this: *CommandLineArgs) void {
     this.iter.deinit();
-    this.exprs.deinit(this.alloc);
-    this.files.deinit(this.alloc);
-}
-
-pub fn parse(this: *This) !void {
-    while (try this.parseNext()) {}
 }
 
 // zig fmt: off
-const Opt = enum {
+const Option = enum {
+    @"-", // read from stdin
     @"-h", @"--help",    // prints usage and exits
     @"-v", @"--version", // dumps version and exits
     @"-d", @"--debug",   // enables debug mode
@@ -40,52 +52,73 @@ const Opt = enum {
 };
 // zig fmt: on
 
-fn nextPositional(this: *This) {
-
+const Status = enum { ok, err };
+fn stop(
+    this: *const CommandLineArgs,
+    status: Status,
+    comptime fmt: []const u8,
+    fmtArgs: anytype,
+) noreturn {
+    stopNoPrefix(status, "{s}: " ++ fmt, .{this.programName} ++ fmtArgs);
 }
 
-fn abort(this: *const This, comptime fmt: []const u8, fmtArgs: anytype) noreturn {
-    var stderr = std.io.getStdErr();
-    stderr.print("{}: " ++ fmt, .{this.programName} ++ fmtArgs) catch @panic("cant abort");
-    std.process.exit(1) ;
+fn stopNoPrefix(status: Status, comptime fmt: []const u8, fmtArgs: anytype) noreturn {
+    var out = if (status == .ok) std.io.getStdOut() else std.io.getStdErr();
+
+    out.writer().print(fmt ++ "\n", fmtArgs) catch @panic("cant abort");
+    std.process.exit(if (status == .ok) 0 else 1);
 }
 
-fn parseNext(this: *This) !bool {
-    const arg = this.iter.next() orelse return false;
-    const opt = std.meta.stringToEnum(Opt, arg) orelse {
-        try std.io.getStderr().print("unknown flag '{}'\ntry `{} --help` for help", arg, this.programName),
-        std.process.exit(1) ;
+fn nextPositional(this: *CommandLineArgs, option: Option) []const u8 {
+    return this.iter.next() orelse {
+        this.stop(.err, "missing positional argument for {s}", .{std.meta.tagName(option)});
+    };
+}
 
-    switch (opt) {
-        .@"-h", .@"--help" => this.writeUsage(.ok),
-        .@"-v", .@"--version" => this.writeVersion(),
-        .@"-d", .@"--debug" => this.debug = true,
-        .@"-e", .@"--expr" => @panic("todo"),
-        .@"--chdir" => @panic("todo"),
+pub fn parse(this: *CommandLineArgs) !void {
+    while (this.iter.next()) |flagName| {
+        // ignore empty flags
+        if (flagName.len == 0)
+            continue;
+
+        const option = std.meta.stringToEnum(Option, flagName) orelse {
+            if (flagName[0] == '-') this.stop(.err, "unknown flag: {s}", .{flagName});
+            this.fileName = flagName;
+            break;
+        };
+
+        switch (option) {
+            .@"-" => {
+                this.fileName = "-";
+                break;
+            },
+            .@"-h", .@"--help" => this.writeUsage(),
+            .@"-v", .@"--version" => writeVersion(),
+            .@"-d", .@"--debug" => this.options.debug = true,
+            .@"-e", .@"--expr" => {
+                this.expr = this.nextPositional(option);
+                break;
+            },
+            .@"--chdir" => try std.os.chdir(this.nextPositional(option)),
+        }
     }
-
-    return true;
 }
+
 const version = "1.0";
 
-fn writeVersion(_: *const This) noreturn {
-    std.io.getStdOut().writer().writeAll(version) catch @panic("cant write version");
-    std.process.exit(0);
+fn writeVersion() noreturn {
+    stopNoPrefix(.ok, "v{s}", .{version});
 }
 
-fn writeUsage(this: *const This, code: enum { ok, err }) noreturn {
-    var out = if (code == .ok) std.io.getStdOut() else std.io.getStdErr();
-
-    out.writer().print(
+fn writeUsage(this: *const CommandLineArgs) noreturn {
+    stopNoPrefix(.ok,
         \\Labyrinth {s}
-        \\usage: {s} [flags] [files...]
+        \\usage: {s} [flags] (-e expr | filename)
         \\flags:
         \\  -h        shows this
         \\  -v        prints version
         \\  -d        enables debug mode
-        \\  -e expr   execute expression before files
         \\If a file is `-`, data is read from stdin.
         \\
-    , .{ version, this.programName }) catch @panic("cant write usage");
-    std.process.exit(if (code == .ok) 0 else 1);
+    , .{ version, this.programName });
 }

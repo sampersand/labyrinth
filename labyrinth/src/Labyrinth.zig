@@ -13,7 +13,7 @@ options: Options = .{},
 minotaurs: std.ArrayListUnmanaged(Minotaur),
 minotaursToSpawn: std.ArrayListUnmanaged(Minotaur),
 allocator: Allocator,
-exitStatus: ?i32 = null,
+exitStatus: ?u8 = null,
 debugger: Debugger,
 rng: std.rand.DefaultPrng,
 
@@ -21,10 +21,11 @@ pub const Options = struct {
     printBoard: bool = false,
     printMinotaurs: bool = false,
     waitForUserInput: bool = false,
+    debug: bool = false,
     sleepMs: u32 = 25,
 };
 
-pub fn init(board: Board, alloc: Allocator) Allocator.Error!Labyrinth {
+pub fn init(alloc: Allocator, board: Board, options: Options) Allocator.Error!Labyrinth {
     var minotaurs = try std.ArrayListUnmanaged(Minotaur).initCapacity(alloc, 8);
     errdefer minotaurs.deinit(alloc);
 
@@ -40,6 +41,7 @@ pub fn init(board: Board, alloc: Allocator) Allocator.Error!Labyrinth {
         .debugger = .{},
         .allocator = alloc,
         .minotaurs = minotaurs,
+        .options = options,
         .minotaursToSpawn = minotaursToSpawn,
         .rng = std.rand.DefaultPrng.init(@intCast(u64, std.time.milliTimestamp())),
     };
