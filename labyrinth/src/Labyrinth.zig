@@ -102,13 +102,14 @@ pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!voi
     }
 }
 
-fn addNewMinotaurs(this: *Labyrinth) Allocator.Error!void {
+fn addNewMinotaurs(this: *Labyrinth) Allocator.Error!bool {
     try this.minotaurs.appendSlice(this.allocator, this.minotaursToSpawn.items);
-    this.minotaursToSpawn.clearRetainingCapacity();
+    defer this.minotaursToSpawn.clearRetainingCapacity();
+    return this.minotaursToSpawn.items.len != 0;
 }
 
 fn debugPrintBoard(this: *const Labyrinth) !void {
-    if (!this.options.printBoard) return;
+    // if (!this.options.printBoard) return;
     try this.debugPrint(std.io.getStdOut().writer());
     std.time.sleep(this.options.sleepMs * 1_000_000);
 }
@@ -122,7 +123,7 @@ pub fn printMinotaurs(this: *const Labyrinth, writer: anytype) !void {
         try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
 }
 
-fn isDone(this: *const Labyrinth) bool {
+pub fn isDone(this: *const Labyrinth) bool {
     return this.exitStatus != null;
 }
 
@@ -133,31 +134,58 @@ pub fn getMinotaur(this: *Labyrinth, id: MinotaurId) MinotaurGetError!*Minotaur 
 }
 
 // returns whether the minotaur is still alive.
-pub fn stepMinotaur(this: *Labyrinth, id: MinotaurId) !bool {
+pub const StepResult = enum { Slayed, Spawned, Alive };
+pub fn stepMinotaur(this: *Labyrinth, id: MinotaurId) !StepResult {
     var minotaur = try this.getMinotaur(id);
     try minotaur.step(this);
 
-    if (!minotaur.hasExited()) return true;
-    this.slayMinotaur(id) catch unreachable;
-    return false;
+    if (!minotaur.hasExited()) {
+        return if (try this.addNewMinotaurs()) .Spawned else .Alive;
+    }
+
+    this.slayMinotaur(id) catch unreachable; // we already validated it earlier.
+    const newSpawned = try this.addNewMinotaurs();
+    assert(!newSpawned); // we dont (currently) spawn minotaurs at the same time we slay them.
+    return .Slayed;
 }
 
 pub fn stepAllMinotaurs(this: *Labyrinth) !void {
-    var idx: usize = 0;
+    var minotaurId: usize = 0;
+    var amntToStep = this.minotaurs.items.len;
+    var amntOfSpawnedMinotaurs: usize = 0;
 
-    while (idx < this.minotaurs.items.len) {
-        if (try this.stepMinotaur(idx)) idx += 1;
+    // We have to be careful to not step new minotaurs that have been added by previous minotaurs
+    // during this stepping process. Since Labyrinth makes no gaurantees about the execution order
+    // of minotaurs, we slay minotaurs by replacing them with the lastmost in the list (so we dont
+    // have to shift everything over each time). However, this means that we might have swapped
+    // a new minotaur over. We make sure we don't do this by keeping track of how many new minotaurs
+    // have spawned: If at least one is around, then we skip it and step the next one.
+    while (minotaurId < amntToStep) {
+        switch (try this.stepMinotaur(minotaurId)) {
+            // If the minotaur is still alive, then just advance.
+            .Alive => minotaurId += 1,
+
+            // A new one was spawned, so we advance and incrmement the spawned count.
+            .Spawned => {
+                minotaurId += 1;
+                amntOfSpawnedMinotaurs += 1;
+            },
+
+            // The slain minotaur has been swapped with the last minotaur. So if that's
+            // a new minotaur, we skip over it, and decrement the amount of new minotaurs.
+            .Slayed => if (amntOfSpawnedMinotaurs == 0) {
+                amntToStep -= 1;
+            } else {
+                // otherwise, we just swapped in a new minotaur, so we decrement the spawned count.
+                minotaurId += 1;
+                amntOfSpawnedMinotaurs -= 1;
+            },
+        }
     }
-
-    try this.addNewMinotaurs();
 }
 
 pub fn play(this: *Labyrinth) !void {
     try this.debugPrintBoard();
-
-    // we have to go one back so we start at the origin.
-    for (this.minotaurs.items) |*minotaur|
-        minotaur.position = try minotaur.position.sub(minotaur.velocity);
 
     while (!this.isDone()) {
         try this.stepAllMinotaurs();
