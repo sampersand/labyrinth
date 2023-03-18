@@ -180,7 +180,6 @@ fn castInt(comptime T: type, int: IntType) PlayError!T {
 }
 
 fn jumpn(this: *Minotaur, n: Value) PlayError!void {
-    // const CoordI32 = @TypeOf(Coordinate).
     const CoordInt = i32;
     const int = try n.toInt();
     const scalar = try castInt(CoordInt, int);

@@ -11,11 +11,32 @@ pub fn init(labyrinth: *Labyrinth) Debugger {
 }
 
 pub fn run(this: Debugger) !void {
+    var stdout = std.io.getStdOut().writer();
+    var stdin = std.io.getStdIn().reader();
+    var lineBuf: [2048]u8 = undefined;
+
     while (true) {
+        try stdout.writeAll("> ");
+        try stdout.sync();
+        const line = stdin.readUntilDelimiter(lineBuf, '\n') catch |err| switch (err) {
+            .StreamTooLong => {
+                try stdout.print("input too large (cap={})\n", @typeInfo(@TypeOf(lineBuf)).Array.len);
+                continue;
+            },
+            else => {
+                try utils.eprintln("unable to read from stdin: {}; exiting", err);
+                return;
+            },
+        };
+        _ = line;
         _ = this;
-        @panic("todo");
-        // const command = this.parseCommand() catch {
-        // ;
+        // var line = undefined;
+        // _ = line;
+        // const command = this.parseCommand() catch |err| {
+        //     utils.eprintln("unable to parse command: {}", .{err});
+        //     continue;
+        // };
+        // _ = command;
     }
 }
 
