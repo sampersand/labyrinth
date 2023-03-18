@@ -35,13 +35,10 @@ pub fn deinit(this: *Board, alloc: Allocator) void {
     this.lines.deinit(alloc);
 }
 
-pub const GetError = error{IntOutOfBounds};
+pub const GetError = error{OutOfBounds};
 pub fn get(this: *const Board, pos: Coordinate) GetError!u8 {
-    const y = std.math.cast(usize, pos.y) orelse return error.IntOutOfBounds;
-    const x = std.math.cast(usize, pos.x) orelse return error.IntOutOfBounds;
-
-    const line = utils.safeIndex(this.lines.items, y) orelse return error.IntOutOfBounds;
-    return utils.safeIndex(line, x) orelse return error.IntOutOfBounds;
+    const line = utils.safeIndex(this.lines.items, @as(usize, pos.y)) orelse return error.OutOfBounds;
+    return utils.safeIndex(line, @as(usize, pos.x)) orelse return error.OutOfBounds;
 }
 
 pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) std.os.WriteError!void {
