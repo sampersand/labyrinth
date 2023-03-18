@@ -3,13 +3,22 @@ const Labyrinth = @import("Labyrinth.zig");
 const utils = @import("utils.zig");
 const Debugger = @This();
 
+labyrinth: *Labyrinth,
 prevCommand: Command = Command.noop,
 
-test "it works" {
-    var tokens = std.mem.tokenize(u8, "dump", " ");
-    const cmd = tokens.next() orelse @panic("oops");
-    _ = cmd;
+pub fn init(labyrinth: *Labyrinth) Debugger {
+    return .{ .labyrinth = labyrinth };
 }
+
+pub fn run(this: Debugger) !void {
+    while (true) {
+        _ = this;
+        @panic("todo");
+        // const command = this.parseCommand() catch {
+        // ;
+    }
+}
+
 const Command = union(enum) {
     const Names = enum { dump, jump };
     // Step: struct { which: usize,
@@ -47,12 +56,11 @@ const Command = union(enum) {
         switch (this) {
             .noop => {},
             .dump => |which| {
-                const stdout = std.io.getStdOut().writer();
                 if (which) |idx| {
                     const minotaur = utils.safeIndex(labyrinth.minotaurs.items, idx) orelse return error.IndexDoesntExist;
-                    try stdout.print("{}\n", .{minotaur});
+                    try utils.println("{}", .{minotaur});
                 } else {
-                    try stdout.print("{}\n", .{labyrinth});
+                    try utils.println("{}", .{labyrinth});
                 }
             },
             .jump => |j| {

@@ -55,17 +55,17 @@ const Option = enum {
 const Status = enum { ok, err };
 fn stop(
     this: *const CommandLineArgs,
-    status: Status,
+    comptime status: Status,
     comptime fmt: []const u8,
     fmtArgs: anytype,
 ) noreturn {
     stopNoPrefix(status, "{s}: " ++ fmt, .{this.programName} ++ fmtArgs);
 }
 
-fn stopNoPrefix(status: Status, comptime fmt: []const u8, fmtArgs: anytype) noreturn {
-    var out = if (status == .ok) std.io.getStdOut() else std.io.getStdErr();
+fn stopNoPrefix(comptime status: Status, comptime fmt: []const u8, fmtArgs: anytype) noreturn {
+    const printFunc = if (status == .ok) utils.println else utils.eprintln;
 
-    out.writer().print(fmt ++ "\n", fmtArgs) catch @panic("cant abort");
+    printFunc(fmt, fmtArgs) catch @panic("cant stop with prefix?");
     std.process.exit(if (status == .ok) 0 else 1);
 }
 

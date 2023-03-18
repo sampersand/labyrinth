@@ -8,6 +8,7 @@ const Function = @import("function.zig").Function;
 const IntType = @import("types.zig").IntType;
 const Array = @import("Array.zig");
 const Board = @import("Board.zig");
+const utils = @import("utils.zig");
 
 position: Coordinate = Coordinate.Origin,
 velocity: Coordinate = Coordinate.Right,
@@ -122,8 +123,9 @@ pub fn play(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
         },
     }
 
-    return this.traverse(labyrinth, Function.fromChar(chr) catch |err| return labyrinth.triggerError(err, .{}));
-    // return this.traverse(labyrinth, try Function.fromChar(chr));
+    return this.traverse(labyrinth, Function.fromChar(chr) catch |err| {
+        return std.log.err("error: {}", .{err});
+    });
 }
 
 fn setArguments(this: *Minotaur, arity: usize) PlayError!void {
@@ -201,8 +203,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         },
         .Str => this.mode = .{ .String = try Array.init(this.allocator) },
         .DumpQ, .Dump => {
-            var writer = std.io.getStdOut().writer();
-            try writer.print("{any}\n", .{labyrinth});
+            try utils.println("{any}", .{labyrinth});
             if (function == .DumpQ) this.exitStatus = 0;
         },
         .Quit0 => this.exitStatus = 0,
@@ -254,11 +255,8 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
             0b11 => this.velocity = Coordinate.Right,
         },
 
-        .DumpValNL, .DumpVal => {
-            var writer = std.io.getStdOut().writer();
-            try writer.print("{}", .{this.args[0]});
-            if (function == .DumpValNL) try writer.writeAll("\n");
-        },
+        .DumpValNL => try utils.println("{}", .{this.args[0]}),
+        .DumpVal => try utils.print("{}", .{this.args[0]}),
 
         .PrintNL, .Print => {
             var writer = std.io.getStdOut().writer();

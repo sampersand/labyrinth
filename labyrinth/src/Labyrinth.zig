@@ -1,6 +1,5 @@
 const std = @import("std");
 const utils = @import("utils.zig");
-const Debugger = @import("Debugger.zig");
 const Board = @import("Board.zig");
 const Minotaur = @import("Minotaur.zig");
 const Allocator = std.mem.Allocator;
@@ -14,7 +13,6 @@ minotaurs: std.ArrayListUnmanaged(Minotaur),
 minotaursToSpawn: std.ArrayListUnmanaged(Minotaur),
 allocator: Allocator,
 exitStatus: ?u8 = null,
-debugger: Debugger,
 rng: std.rand.DefaultPrng,
 
 pub const Options = struct {
@@ -38,7 +36,6 @@ pub fn init(alloc: Allocator, board: Board, options: Options) Allocator.Error!La
 
     return Labyrinth{
         .board = board,
-        .debugger = .{},
         .allocator = alloc,
         .minotaurs = minotaurs,
         .options = options,
@@ -144,10 +141,4 @@ pub fn play(this: *Labyrinth) !void {
         try this.addNewMinotaurs();
         try this.debugPrintBoard();
     }
-}
-
-pub fn triggerError(this: *Labyrinth, err: anytype, context: anytype) @TypeOf(err) {
-    std.log.err("error: {} (context: {})", .{ err, context });
-    this.debugger.takeInput(this) catch @panic("unable to do debugger"); //: {}", null, .{e});
-    return err;
 }
