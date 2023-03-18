@@ -2,6 +2,7 @@ const std = @import("std");
 const Labyrinth = @import("Labyrinth.zig");
 const utils = @import("utils.zig");
 const Debugger = @This();
+const Coordinate = @import("Coordinate.zig");
 
 labyrinth: *Labyrinth,
 command: Command = Command.noop,
@@ -68,7 +69,7 @@ const Command = union(enum) {
 
     dumpAll: void,
     dumpMinotaur: usize,
-    jump: struct { which: usize, to: @import("Coordinate.zig") },
+    jump: struct { which: usize, to: Coordinate },
     stepAll: usize,
     stepOne: struct { minotaur: usize, amount: usize },
     noop: void,

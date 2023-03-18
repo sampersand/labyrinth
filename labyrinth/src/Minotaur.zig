@@ -18,6 +18,7 @@ stack: std.ArrayListUnmanaged(Value),
 args: [Function.MaxArgc]Value = undefined,
 mode: union(enum) { Normal, Integer: IntType, String: *Array } = .Normal,
 stepsAhead: usize = 0,
+isFirst: bool = false,
 exitStatus: ?u8 = null,
 prevPositions: [3]Coordinate = .{Coordinate.Origin} ** 3,
 
@@ -94,7 +95,9 @@ pub fn step(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
         return;
     }
 
-    try this.advance();
+    if (this.isFirst) {
+        this.isFirst = false;
+    } else try this.advance();
     const chr = try labyrinth.board.get(this.position);
 
     switch (this.mode) {

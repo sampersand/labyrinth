@@ -33,6 +33,7 @@ pub fn init(alloc: Allocator, board: Board, options: Options) Allocator.Error!La
     errdefer minotaursToSpawn.deinit(alloc);
 
     var minotaur = try Minotaur.initCapacity(alloc, 8);
+    minotaur.isFirst = true;
     errdefer minotaur.deinit();
     try minotaurs.append(alloc, minotaur);
 
@@ -109,7 +110,7 @@ fn addNewMinotaurs(this: *Labyrinth) Allocator.Error!bool {
 }
 
 fn debugPrintBoard(this: *const Labyrinth) !void {
-    // if (!this.options.printBoard) return;
+    if (!this.options.printBoard) return;
     try this.debugPrint(std.io.getStdOut().writer());
     std.time.sleep(this.options.sleepMs * 1_000_000);
 }
