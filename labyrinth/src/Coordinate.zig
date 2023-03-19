@@ -1,7 +1,6 @@
 const std = @import("std");
 const Coordinate = @This();
 const Vector = @import("Vector.zig");
-
 x: u32 = 0,
 y: u32 = 0,
 

@@ -31,4 +31,12 @@ pub fn build(b: *std.build.Builder) void {
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&exe_tests.step);
+
+    const build_options = b.addOptions();
+    exe.addOptions("build-options", build_options);
+    build_options.addOption(
+        ?usize,
+        "max_velocity",
+        b.option(usize, "max-velocity", "Maximum Velocity"),
+    );
 }

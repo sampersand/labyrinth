@@ -6,6 +6,7 @@ const Coordinate = @import("Coordinate.zig");
 const utils = @import("utils.zig");
 const Board = @This();
 
+// Note that on the board, `(0,0)` is the upper left; `y` is the line and `x` is the col.
 filename: []const u8,
 lines: std.ArrayListUnmanaged([]u8),
 maxX: usize = 0,

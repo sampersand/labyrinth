@@ -232,15 +232,8 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .Right => this.velocity = Vector.Right,
         .Up => this.velocity = Vector.Up,
         .Down => this.velocity = Vector.Down,
-        .SpeedUp => this.velocity = this.velocity.add(this.velocity.direction()),
-        .SlowDown => {
-            const dir = this.velocity.direction();
-            this.velocity = this.velocity.sub(dir);
-            if (this.velocity.x == 0 and this.velocity.y == 0) {
-                this.velocity = this.velocity.sub(dir);
-            }
-        },
-
+        .SpeedUp => this.velocity = this.velocity.speedUp(),
+        .SlowDown => this.velocity = this.velocity.slowDown(),
         .Jump1 => try this.advance(),
         .JumpN => try this.jumpn(this.args[0]),
         .Dup => returnValue = try this.dupn(1),
