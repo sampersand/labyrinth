@@ -17,6 +17,9 @@ pub fn main() !u8 {
     var labyrinth = try args.createLabyrinth();
     defer labyrinth.deinit();
 
+    // try labyrinth.printBoard(std.io.getStdOut().writer());
+    // if (true) return 0;
+
     if (args.options.debug) {
         var debugger = Debugger.init(&labyrinth);
         try debugger.run();

@@ -19,13 +19,15 @@ args: [Function.MaxArgc]Value = undefined,
 mode: union(enum) { Normal, Integer: IntType, String: *Array } = .Normal,
 stepsAhead: usize = 0,
 isFirst: bool = false,
+colour: u8,
 exitStatus: ?u8 = null,
-prevPositions: [3]Coordinate = .{Coordinate.Origin} ** 3,
+prevPositions: [5]Coordinate = .{Coordinate.Origin} ** 5,
 
 pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!Minotaur {
     return Minotaur{
         .stack = try std.ArrayListUnmanaged(Value).initCapacity(alloc, cap),
         .allocator = alloc,
+        .colour = 0,
     };
 }
 
@@ -37,8 +39,10 @@ pub fn deinit(this: *Minotaur) void {
 
 pub fn advance(this: *Minotaur) Coordinate.MoveError!void {
     std.debug.assert(!this.hasExited());
-    this.prevPositions[2] = this.prevPositions[1];
-    this.prevPositions[1] = this.prevPositions[0];
+    var i: usize = 4;
+    while (i != 0) : (i -= 1) {
+        this.prevPositions[i] = this.prevPositions[i - 1];
+    }
     this.prevPositions[0] = this.position;
     this.position = try this.position.moveBy(this.velocity);
 }
@@ -163,6 +167,7 @@ pub fn clone(this: *const Minotaur) Allocator.Error!Minotaur {
         .position = this.position,
         .velocity = this.velocity,
         .allocator = this.allocator,
+        .colour = this.colour +% 1,
         .mode = this.mode,
         .stack = stack,
         .prevPositions = this.prevPositions,
@@ -255,6 +260,8 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .IfPop => _ = try this.popn(if (this.args[0].isTruthy()) 2 else 1),
         .JumpUnless => if (!this.args[0].isTruthy()) try this.advance(),
         .JumpNUnless => if (!this.args[0].isTruthy()) try this.jumpn(this.args[1]),
+        .JumpIf => if (this.args[0].isTruthy()) try this.advance(),
+        .JumpNIf => if (this.args[0].isTruthy()) try this.jumpn(this.args[1]),
 
         .Rand => returnValue = Value.from(labyrinth.rng.random().int(IntType)),
         .RandDir => this.velocity = randomVelocity(&labyrinth.rng),
@@ -266,6 +273,9 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
             try this.args[0].print(writer);
             if (function == .PrintNL) try writer.writeAll("\n");
         },
+
+        .IncColour => this.colour +%= 1,
+        .SetColour => this.colour = @bitCast(u8, @truncate(i8, try this.args[0].toInt())),
 
         .Sleep1 => this.stepsAhead = 1,
         .SleepN => this.stepsAhead = try castInt(usize, try this.args[0].toInt()),

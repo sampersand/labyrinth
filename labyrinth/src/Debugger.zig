@@ -1,8 +1,10 @@
 const std = @import("std");
 const Labyrinth = @import("Labyrinth.zig");
+const MinotaurId = Labyrinth.MinotaurId;
 const utils = @import("utils.zig");
 const Debugger = @This();
 const Coordinate = @import("Coordinate.zig");
+const Vector = @import("Vector.zig");
 
 labyrinth: *Labyrinth,
 command: Command = Command.noop,
@@ -54,11 +56,47 @@ const Command = union(enum) {
             return err;
         }
     };
+    const ArgParser = struct {
+        iter: std.mem.TokenIterator(u8),
+        ctx: *ParseContext,
+        cmdName: []const u8,
+
+        fn init(line: []const u8, ctx: *ParseContext) ?ArgParser {
+            var iter = std.mem.tokenize(u8, line, &std.ascii.whitespace);
+            const cmdName = iter.next() orelse return null;
+            return .{ .ctx = ctx, .iter = iter, .cmdName = cmdName };
+        }
+
+        fn next(this: *ArgParser) ?[]const u8 {
+            return this.iter.next();
+        }
+
+        fn nextReq(this: *ArgParser) ParseError![]const u8 {
+            return this.next() orelse return this.ctx.fail(error.TooFewArgs, this.cmdName);
+        }
+
+        fn read(this: *ArgParser, comptime T: type) ParseError!T {
+            return Command.read(T, try this.nextReq(), this.ctx);
+        }
+
+        fn readOr(this: *ArgParser, comptime T: type, default: T) ParseError!T {
+            return if (this.next()) |arg|
+                std.fmt.parseInt(T, arg, 10) catch |err| this.ctx.fail(error.CantParseInt, err)
+            else
+                default;
+        }
+    };
+
+    fn read(comptime T: type, arg: []const u8, ctx: *ParseContext) ParseError!T {
+        return std.fmt.parseInt(T, arg, 10) catch |err| ctx.fail(error.CantParseInt, err);
+    }
 
     // zig fmt: off
     const Names = enum {
         dump, d,
         jump, j,
+        @"set-position",
+        @"set-velocity",
         quit, q,
         step, s,
         stepm, sm,
@@ -68,98 +106,86 @@ const Command = union(enum) {
     // zig fmt: on
 
     dumpAll: void,
-    dumpMinotaur: usize,
-    jump: struct { which: usize, to: Coordinate },
-    stepAll: usize,
-    stepOne: struct { minotaur: usize, amount: usize },
+    dumpMinotaur: MinotaurId,
+    jumpTo: struct { id: MinotaurId, position: ?Coordinate = null, velocity: ?Vector = null },
+    stepAll: MinotaurId,
+    stepOne: struct { minotaur: MinotaurId, amount: usize },
     noop: void,
     help: void,
     quit: void,
     print: struct { board: bool, minotaurs: bool },
 
-    fn read(comptime T: type, in: []const u8, ctx: *ParseContext) ParseError!T {
-        return std.fmt.parseInt(T, in, 10) catch |err| ctx.fail(error.CantParseInt, err);
-    }
-
     fn parse(line: []const u8, ctx: *ParseContext) ParseError!?Command {
-        var tokens = std.mem.tokenize(u8, line, &std.ascii.whitespace);
-        const cmdName = tokens.next() orelse return null;
+        var args = ArgParser.init(line, ctx) orelse return null;
 
-        const cmd = std.meta.stringToEnum(Names, cmdName) orelse
-            return ctx.fail(error.UnknownCommandName, cmdName);
+        const cmd = std.meta.stringToEnum(Names, args.cmdName) orelse
+            return ctx.fail(error.UnknownCommandName, args.cmdName);
 
         return switch (cmd) {
-            .dump, .d => if (tokens.next()) |arg| .{ .dumpMinotaur = try read(usize, arg, ctx) } else .dumpAll,
+            .dump, .d => if (args.next()) |arg| .{ .dumpMinotaur = try read(usize, arg, ctx) } else .dumpAll,
             .quit, .q => .quit,
-            .step, .s => .{ .stepAll = if (tokens.next()) |arg| try read(usize, arg, ctx) else 1 },
+            .step, .s => .{ .stepAll = try args.readOr(usize, 1) },
             .stepm, .sm => .{ .stepOne = .{
-                .minotaur = try read(usize, tokens.next() orelse return ctx.fail(error.TooFewArgs, cmdName), ctx),
-                .amount = if (tokens.next()) |arg| try read(usize, arg, ctx) else 1,
+                .minotaur = try args.read(usize),
+                .amount = try args.readOr(usize, 1),
             } },
-            .jump, .j => {
-                return null;
-                // const which = try read(usize, tokens.next());
-                // const x = try std.fmt.parseInt(i32, tokens.next() orelse return error.TooFewArgs, 10);
-                // const y = try std.fmt.parseInt(i32, tokens.next() orelse return error.TooFewArgs, 10);
-                // return .{ .jump = .{ .which = which, .to = .{ .x = x, .y = y } } };
-            },
+            .jump, .j => .{ .jumpTo = .{
+                .id = try args.read(usize),
+                .position = .{ .x = try args.read(u32), .y = try args.read(u32) },
+                .velocity = .{ .x = try args.read(i32), .y = try args.read(i32) },
+            } },
+            .@"set-position" => .{ .jumpTo = .{
+                .id = try args.read(usize),
+                .position = .{ .x = try args.read(u32), .y = try args.read(u32) },
+            } },
+            .@"set-velocity" => .{ .jumpTo = .{
+                .id = try args.read(usize),
+                .velocity = .{ .x = try args.read(i32), .y = try args.read(i32) },
+            } },
             .help => .help,
             .@"print-board", .pr => .{ .print = .{ .board = true, .minotaurs = true } },
         };
     }
 
-    pub fn run(this: Command, debugger: *Debugger) !void {
+    pub fn run(this: Command, dbg: *Debugger) !void {
         switch (this) {
             .noop => {},
             .dumpMinotaur => {},
-            .dumpAll => try utils.println("{}", .{debugger.labyrinth}),
-            .jump => {},
-            .help => {},
+            .dumpAll => try utils.println("{}", .{dbg.labyrinth}),
             .stepOne => {},
             .stepAll => |amnt| {
                 var n = @as(usize, 0);
                 while (n < amnt) : (n += 1) {
-                    try debugger.labyrinth.stepAllMinotaurs();
+                    try dbg.labyrinth.stepAllMinotaurs();
                 }
             },
             .print => |info| {
                 const stdout = std.io.getStdOut().writer();
                 if (info.board) {
-                    try debugger.labyrinth.printBoard(stdout);
+                    try dbg.labyrinth.printBoard(stdout);
                     if (info.minotaurs) try stdout.writeByte('\n');
                 }
-                if (info.minotaurs) try debugger.labyrinth.printMinotaurs(stdout);
+                if (info.minotaurs) try dbg.labyrinth.printMinotaurs(stdout);
             },
             .quit => unreachable, // should be handled in minotaur
-            // .dump => |which| {
-            //     if (which) |idx| {
-            //         const minotaur = utils.safeIndex(labyrinth.minotaurs.items, idx) orelse return error.IndexDoesntExist;
-            //         try utils.println("{}", .{minotaur});
-            //     } else {
-            //         try utils.println("{}", .{labyrinth});
-            //     }
-            // },
-            // .jump => |j| {
-            //     var minotaur = utils.safeIndex(labyrinth.minotaurs.items, j.which) orelse return error.IndexDoesntExist;
-            //     minotaur.position = j.to;
-            // },
+            .jumpTo => |j| {
+                var minotaur = try dbg.labyrinth.getMinotaur(j.id);
+                minotaur.isFirst = false;
+                if (j.position) |p| minotaur.position = p;
+                if (j.velocity) |v| minotaur.velocity = v;
+            },
+            .help => try utils.println(
+                \\ commands:
+                \\   d, dump [id] - dumps the minotaur at `id`; dumps the program without id.
+                \\   j, jump id posX posY veloX veloY - sets the position & velocity of a minotaur
+                \\   set-position id posX posY - sets the position of a minotaur
+                \\   set-velocity id veloX veloY - sets the velocity of a minotaur
+                \\   q, quit - stops the interpreter
+                \\   s, step [amnt=1] - steps all minotaurs `amnt` times
+                \\   sm, stepm id [amnt=1] - steps just the minotuar `id` `amnt` times.
+                \\   help - prints this
+                \\   pr, print-board - prints the board
+            , .{}),
         }
     }
 };
-
-//     fn read(comptime T: type, in: ?[]const u8) !T {
-//         _ = in;
-//         // return std.fmt.parseInt(usize, in orelse return error.TooFewArgs);
-//         return undefined;
-//     }
-
-// pub fn takeInput(this: *Debugger, labyrinth: *Labyrinth) !void {
-//     const line = try utils.readLine(labyrinth.allocator, 1024);
-//     defer {
-//         if (line) |l| labyrinth.allocator.free(l);
-//     }
-
-//     const command = try Command.parse(line orelse "") orelse this.prevCommand;
-//     this.prevCommand = command;
-//     try command.run(labyrinth);
-// }

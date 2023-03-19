@@ -8,6 +8,7 @@ const Board = @This();
 
 filename: []const u8,
 lines: std.ArrayListUnmanaged([]u8),
+maxX: usize = 0,
 
 fn parseBoard(board: *Board, alloc: Allocator, source: []const u8) Allocator.Error!void {
     var iter = std.mem.split(u8, source, "\n");
@@ -15,6 +16,7 @@ fn parseBoard(board: *Board, alloc: Allocator, source: []const u8) Allocator.Err
         var dup = try alloc.dupe(u8, line);
         errdefer alloc.free(dup);
 
+        if (line.len > board.maxX) board.maxX = line.len;
         try board.lines.append(alloc, @ptrCast([]u8, dup));
     }
 }
@@ -41,15 +43,33 @@ pub fn get(this: *const Board, pos: Coordinate) GetError!u8 {
     return utils.safeIndex(line, @as(usize, pos.x)) orelse return error.OutOfBounds;
 }
 
+fn printXHeadings(writer: anytype, maxX: usize, maxYLen: usize) std.os.WriteError!void {
+    var range = std.math.log10(maxX) + 1;
+
+    while (range != 0) : (range -= 1) {
+        const repeatAmount = std.math.pow(usize, 10, range - 1);
+        try writer.writeByteNTimes(' ', maxYLen + repeatAmount);
+        var x: u8 = 1;
+        while (x <= @divTrunc(maxX, repeatAmount)) : (x += 1) {
+            try writer.writeByteNTimes('0' + (x % 10), std.math.min(
+                maxX - repeatAmount * x + 1,
+                repeatAmount,
+            ));
+        }
+        try writer.writeByte('\n');
+    }
+}
+
 pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) std.os.WriteError!void {
     const Cursor = struct {
         idx: usize,
+        id: usize,
         age: usize,
         fn cmp(_: void, l: @This(), r: @This()) bool {
             return l.idx < r.idx;
         }
     };
-    const colors = [4]usize{ 254, 248, 242, 236 };
+    // const colors = [4]usize{ 254, 248, 242, 236 };
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -57,17 +77,31 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
     var indices = std.ArrayList(Cursor).initCapacity(allocator, minotaurs.len) catch @panic("oops?");
 
     try writer.print("file: {s}\n", .{this.filename});
+
+    const maxYLen = std.math.log10(this.lines.items.len) + 1;
+    try printXHeadings(writer, this.maxX, maxYLen);
+
     for (this.lines.items) |line, col| {
         indices.clearRetainingCapacity();
 
         for (minotaurs) |minotaur| {
             if (minotaur.position.y == col)
-                indices.append(.{ .idx = @intCast(usize, minotaur.position.x), .age = 0 }) catch unreachable;
+                indices.append(.{
+                    .idx = @intCast(usize, minotaur.position.x),
+                    .age = 0,
+                    .id = minotaur.colour,
+                }) catch unreachable;
+
             for (minotaur.prevPositions) |pos, i|
                 if (pos.y == col and pos.x >= 0)
-                    indices.append(.{ .idx = @intCast(usize, pos.x), .age = i + 1 }) catch unreachable;
+                    indices.append(.{
+                        .idx = @intCast(usize, pos.x),
+                        .age = i + 1,
+                        .id = minotaur.colour,
+                    }) catch unreachable;
         }
 
+        try writer.print("{[c]d: >[l]} ", .{ .c = col, .l = maxYLen });
         if (indices.items.len == 0) {
             try writer.print("{s}\n", .{line});
             continue;
@@ -76,15 +110,16 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
         std.sort.sort(Cursor, indices.items, {}, Cursor.cmp);
         var i: usize = 0;
         while (i < indices.items.len) : (i += 1) {
-            if (i != 0 and indices.items[i].idx == indices.items[i - 1].idx)
+            const index = indices.items[i];
+            if (i != 0 and index.idx == indices.items[i - 1].idx)
                 continue;
 
             const start = if (i == 0) 0 else indices.items[i - 1].idx + 1;
-            const len = indices.items[i].idx - start;
+            const len = index.idx - start;
             try writer.print("{s}\x1B[48;5;{}m{c}\x1B[0m", .{
                 line[start .. start + len],
-                colors[indices.items[i].age],
-                line[indices.items[i].idx],
+                ((index.id + 16) % 36) + 36 * (6 - index.age),
+                line[index.idx],
             });
         }
 

@@ -50,10 +50,12 @@ pub const Function = enum(u8) {
     IfL = 'I',
     Ifpopold = 't',
     IfPop = 'T',
+    JumpIf = 'K',
+    JumpNIf = 'k',
     JumpUnless = 'H',
     JumpNUnless = 'h',
-    SpawnL = 'm', // hire them
-    SpawnR = 'M', // hire them
+    SpawnL = 'M', // hire them
+    SpawnR = 'm', // hire them
     Slay1 = 'F', // fire
     SlayN = 'f', // fire n
 
@@ -94,7 +96,9 @@ pub const Function = enum(u8) {
     Dump = 'd',
     Quit0 = 'Q',
     Quit = 'q',
-    Gets = 'U',
+    Gets = '(',
+    IncColour = 'U',
+    SetColour = 'u',
 
     pub fn toByte(this: Function) u8 {
         return @enumToInt(this);
@@ -110,15 +114,15 @@ pub const Function = enum(u8) {
     pub fn arity(this: Function) usize {
         return switch (this) {
             .I0, .I1, .I2, .I3, .I4, .I5, .I6, .I7, .I8, .I9 => 0,
-            .Dup, .Dup2, .Pop2, .Swap, .StackLen => 0,
+            .Dup, .Dup2, .Pop2, .Swap, .StackLen, .IncColour => 0,
             .MoveH, .MoveV, .Up, .Down, .Left, .Right, .SpeedUp, .SlowDown, .Sleep1 => 0,
             .Dump, .DumpQ, .Quit0, .Gets, .Str, .Jump1, .RandDir, .Rand, .SpawnL, .SpawnR => 0,
 
             .Pop, .DupN, .PopN, .Not, .Chr, .Ord, .ToS, .ToI, .Inc, .Dec => 1,
-            .IfL, .IfR, .IfPop, .JumpUnless, .JumpN, .Quit, .Len => 1,
-            .Print, .PrintNL, .DumpVal, .DumpValNL, .SleepN => 1,
+            .IfL, .IfR, .IfPop, .JumpUnless, .JumpIf, .JumpN, .Quit, .Len => 1,
+            .Print, .PrintNL, .DumpVal, .DumpValNL, .SleepN, .SetColour => 1,
 
-            .Add, .Sub, .Mul, .Div, .Mod, .Eql, .Lth, .Gth, .Cmp, .JumpNUnless => 2,
+            .Add, .Sub, .Mul, .Div, .Mod, .Eql, .Lth, .Gth, .Cmp, .JumpNUnless, .JumpNIf => 2,
             .Get => 3,
             .Set => 4,
 

@@ -15,14 +15,15 @@ minotaurs: std.ArrayListUnmanaged(Minotaur),
 minotaursToSpawn: std.ArrayListUnmanaged(Minotaur),
 allocator: Allocator,
 exitStatus: ?u8 = null,
+generation: usize = 0,
 rng: std.rand.DefaultPrng,
 
 pub const Options = struct {
-    printBoard: bool = false,
+    printBoard: bool = true,
     printMinotaurs: bool = false,
     waitForUserInput: bool = false,
     debug: bool = false,
-    sleepMs: u32 = 25,
+    sleepMs: u32 = 10, //25,
 };
 
 pub fn init(alloc: Allocator, board: Board, options: Options) Allocator.Error!Labyrinth {
@@ -94,6 +95,7 @@ pub fn slayMinotaur(this: *Labyrinth, id: MinotaurId) MinotaurGetError!void {
 pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!void {
     std.time.sleep(this.options.sleepMs * 1_000_000);
     try utils.clearScreen(writer);
+    try writer.print("step {d}\n", .{this.generation});
     try this.board.printBoard(this.minotaurs.items, writer);
 
     if (this.options.printMinotaurs) {
@@ -155,6 +157,7 @@ pub fn stepAllMinotaurs(this: *Labyrinth) !void {
     var amntToStep = this.minotaurs.items.len;
     var amntOfSpawnedMinotaurs: usize = 0;
 
+    this.generation += 1;
     // We have to be careful to not step new minotaurs that have been added by previous minotaurs
     // during this stepping process. Since Labyrinth makes no gaurantees about the execution order
     // of minotaurs, we slay minotaurs by replacing them with the lastmost in the list (so we dont
