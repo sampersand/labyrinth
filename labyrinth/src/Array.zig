@@ -2,16 +2,17 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Array = @This();
 const Value = @import("value.zig").Value;
-const assert = std.debug.assert;
 const IntType = @import("types.zig").IntType;
 
 refcount: u32,
 eles: std.ArrayListUnmanaged(Value),
 
+/// Creates a new `Array` with no starting capacity.
 pub fn init(alloc: Allocator) Allocator.Error!*Array {
     return initCapacity(alloc, 0);
 }
 
+/// Creates a new `Array` with the given starting capacity.
 pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!*Array {
     var ary = try alloc.create(Array);
     errdefer alloc.destroy(ary);
@@ -21,73 +22,92 @@ pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!*Array {
     return ary;
 }
 
-pub fn increment(this: *Array) void {
-    this.refcount += 1;
+/// Increments the refcount by one.
+pub inline fn increment(ary: *Array) void {
+    ary.refcount += 1;
 }
 
-pub fn decrement(this: *Array, alloc: Allocator) void {
-    assert(this.refcount != 0);
-    this.refcount -= 1;
+/// Decrements the refcount by one; if it reaches zero, the array is deallocated.
+pub fn decrement(ary: *Array, alloc: Allocator) void {
+    std.debug.assert(ary.refcount != 0);
+    ary.refcount -= 1;
 
-    if (this.refcount == 0) this.deinitNoCheck(alloc);
+    if (ary.refcount == 0) ary.deinitNoCheck(alloc);
 }
 
-pub fn deinit(this: *Array, alloc: Allocator) void {
-    assert(this.refcount == 0);
-    this.deinitNoCheck(alloc);
+/// Deinitializes `ary`. `refcount` must be zero; if it's not, call `deinitNoCheck`.
+pub inline fn deinit(ary: *Array, alloc: Allocator) void {
+    std.debug.assert(ary.refcount == 0);
+    ary.deinitNoCheck(alloc);
 }
 
-pub fn deinitNoCheck(this: *Array, alloc: Allocator) void {
-    for (this.eles.items) |value|
+/// Deinitializes the Array without checking to make sure its refcount is zero.
+pub fn deinitNoCheck(ary: *Array, alloc: Allocator) void {
+    for (ary.eles.items) |value|
         value.deinit(alloc);
 
-    this.eles.deinit(alloc);
-    alloc.destroy(this);
+    ary.eles.deinit(alloc);
+    alloc.destroy(ary);
 }
 
-pub fn push(this: *Array, alloc: Allocator, value: Value) Allocator.Error!void {
-    try this.eles.append(alloc, value);
+/// Pushes `value` onto the end of the allocator.
+pub inline fn push(ary: *Array, alloc: Allocator, value: Value) Allocator.Error!void {
+    try ary.eles.append(alloc, value);
 }
 
-pub fn pop(this: *Array) ?Value {
-    return this.eles.popOrNull();
+/// Pops the last element off the end of the array.
+pub inline fn pop(ary: *Array) ?Value {
+    return ary.eles.popOrNull();
 }
 
-pub fn len(this: *const Array) usize {
-    return this.eles.items.len;
+/// Returns how many elements are currently in the array.
+pub inline fn len(ary: *const Array) usize {
+    return ary.eles.items.len;
 }
 
-pub fn equals(this: *const Array, other: *const Array) bool {
-    if (this == other) return true;
-    if (this.len() != other.len()) return false;
+/// Sees whether `ary` has the same elements as `other`.
+pub fn equals(ary: *const Array, other: *const Array) bool {
+    // if they're identical, they're the same.
+    if (ary == other)
+        return true;
 
-    for (this.eles.items) |value, index| {
+    // If their lengths arent equal theyre not the same.
+    if (ary.len() != other.len())
+        return false;
+
+    // If any item isn't the same, then the arrays arent equivalent
+    for (ary.eles.items) |value, index| {
         if (!value.equals(other.eles.items[index]))
             return false;
     }
 
+    // Every value's compared the same so theyre equal.
     return true;
 }
 
-pub const ParseIntError = error{NotAnArrayOfInts};
-pub fn parseInt(this: *const Array) ParseIntError!IntType {
-    if (this.len() == 0) return 0;
+/// Errors that can happen when `parseInt` is called.
+pub const ParseIntError = error{ NotAnArrayOfInts, Overflow };
+
+/// Must be called on an array of ints; Interprets it as a string, and returns the int value
+/// associated.
+pub fn parseInt(ary: *const Array) ParseIntError!IntType {
+    if (ary.len() == 0) return 0;
 
     const minus = comptime Value.from('-');
     var int: IntType = 0;
     var sign: IntType = 1;
     var idx: usize = 0;
 
-    if (this.eles.items[idx].equals(minus)) {
+    if (ary.eles.items[idx].equals(minus)) {
         sign = -1;
         idx += 1;
     }
 
-    while (idx < this.len()) : (idx += 1) {
-        switch (this.eles.items[idx].classify()) {
+    while (idx < ary.len()) : (idx += 1) {
+        switch (ary.eles.items[idx].classify()) {
             .int => |i| {
                 if (i < '0' or '9' < i) break;
-                int = (int * 10) + (i - '0');
+                int = try std.math.add(IntType, try std.math.mul(IntType, int, 10), i - '0');
             },
             else => return error.NotAnArrayOfInts,
         }
@@ -97,26 +117,28 @@ pub fn parseInt(this: *const Array) ParseIntError!IntType {
 }
 
 pub fn format(
-    this: *const Array,
+    ary: *const Array,
     comptime _: []const u8,
     _: std.fmt.FormatOptions,
     writer: anytype,
 ) std.os.WriteError!void {
     try writer.writeAll("[");
 
-    for (this.eles.items) |value, idx| {
-        if (idx != 0) try writer.writeAll(", ");
+    for (ary.eles.items) |value, idx| {
+        if (idx != 0)
+            try writer.writeAll(", ");
         try writer.print("{}", .{value});
     }
 
     try writer.writeAll("]");
 }
 
-pub fn print(this: *const Array, writer: anytype) Value.PrintError!void {
-    for (this.eles.items) |value| {
+/// Calls `print` on every element in `ary`, writing a newline if it's an array.
+pub fn print(ary: *const Array, writer: anytype) Value.PrintError!void {
+    for (ary.eles.items) |value| {
         try value.print(writer);
-
-        if (value.classify() == .ary) try writer.writeAll("\n");
+        if (value.classify() == .ary)
+            try writer.writeAll("\n");
     }
 }
 

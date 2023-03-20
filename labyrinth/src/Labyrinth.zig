@@ -1,6 +1,6 @@
 const std = @import("std");
 const utils = @import("utils.zig");
-const Board = @import("Board.zig");
+const Maze = @import("Maze.zig");
 const Minotaur = @import("Minotaur.zig");
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
@@ -9,7 +9,7 @@ const Labyrinth = @This();
 
 pub const MinotaurId = usize;
 
-board: Board,
+maze: Maze,
 options: Options = .{},
 minotaurs: std.ArrayListUnmanaged(Minotaur),
 minotaurs_to_spawn: std.ArrayListUnmanaged(Minotaur),
@@ -19,14 +19,14 @@ generation: usize = 0,
 rng: std.rand.DefaultPrng,
 
 pub const Options = struct {
-    print_board: bool = true,
+    print_maze: bool = true,
     print_minotaurs: bool = false,
     wait_for_user_input: bool = false,
     debug: bool = false,
     sleep_ms: u32 = 10, //25,
 };
 
-pub fn init(alloc: Allocator, board: Board, options: Options) Allocator.Error!Labyrinth {
+pub fn init(alloc: Allocator, maze: Maze, options: Options) Allocator.Error!Labyrinth {
     var minotaurs = try std.ArrayListUnmanaged(Minotaur).initCapacity(alloc, 8);
     errdefer minotaurs.deinit(alloc);
 
@@ -39,7 +39,7 @@ pub fn init(alloc: Allocator, board: Board, options: Options) Allocator.Error!La
     try minotaurs.append(alloc, minotaur);
 
     return Labyrinth{
-        .board = board,
+        .maze = maze,
         .allocator = alloc,
         .minotaurs = minotaurs,
         .options = options,
@@ -48,14 +48,16 @@ pub fn init(alloc: Allocator, board: Board, options: Options) Allocator.Error!La
     };
 }
 
-pub fn deinit(this: *Labyrinth) void {
-    this.board.deinit(this.allocator);
+pub fn deinit(labyrinth: *Labyrinth) void {
+    labyrinth.maze.deinit(labyrinth.allocator);
 
-    for (this.minotaurs.items) |*minotaur| minotaur.deinit();
-    this.minotaurs.deinit(this.allocator);
+    for (labyrinth.minotaurs.items) |*minotaur|
+        minotaur.deinit();
+    labyrinth.minotaurs.deinit(labyrinth.allocator);
 
-    for (this.minotaurs_to_spawn.items) |*minotaur| minotaur.deinit();
-    this.minotaurs_to_spawn.deinit(this.allocator);
+    for (labyrinth.minotaurs_to_spawn.items) |*minotaur|
+        minotaur.deinit();
+    labyrinth.minotaurs_to_spawn.deinit(labyrinth.allocator);
 }
 
 pub fn format(
@@ -66,8 +68,8 @@ pub fn format(
 ) std.os.WriteError!void {
     try writer.writeAll("Labyrinth(");
     // if (this.options & 1 == 1) {
-    //     try writer.writeAll("board=");
-    //     try this.board.dump(writer);
+    //     try writer.writeAll("maze=");
+    //     try this.maze.dump(writer);
     //     try writer.print(", options={d}, ", .{this.options});
     // }
 
@@ -96,7 +98,7 @@ pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!voi
     std.time.sleep(this.options.sleep_ms * 1_000_000);
     try utils.clearScreen(writer);
     try writer.print("step {d}\n", .{this.generation});
-    try this.board.printBoard(this.minotaurs.items, writer);
+    try this.maze.printMaze(this.minotaurs.items, writer);
 
     if (this.options.print_minotaurs) {
         try writer.writeAll("\n");
@@ -111,14 +113,14 @@ fn addNewMinotaurs(this: *Labyrinth) Allocator.Error!bool {
     return this.minotaurs_to_spawn.items.len != 0;
 }
 
-fn debugPrintBoard(this: *const Labyrinth) !void {
-    if (!this.options.print_board) return;
+fn debugPrintMaze(this: *const Labyrinth) !void {
+    if (!this.options.print_maze) return;
     try this.debugPrint(std.io.getStdOut().writer());
     std.time.sleep(this.options.sleep_ms * 1_000_000);
 }
 
-pub fn printBoard(this: *const Labyrinth, writer: anytype) !void {
-    try this.board.printBoard(this.minotaurs.items, writer);
+pub fn printMaze(this: *const Labyrinth, writer: anytype) !void {
+    try this.maze.printMaze(this.minotaurs.items, writer);
 }
 
 pub fn printMinotaurs(this: *const Labyrinth, writer: anytype) !void {
@@ -189,10 +191,10 @@ pub fn stepAllMinotaurs(this: *Labyrinth) !void {
 }
 
 pub fn play(this: *Labyrinth) !void {
-    try this.debugPrintBoard();
+    try this.debugPrintMaze();
 
     while (!this.isDone()) {
         try this.stepAllMinotaurs();
-        try this.debugPrintBoard();
+        try this.debugPrintMaze();
     }
 }

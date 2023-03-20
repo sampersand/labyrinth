@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const CommandLineArgs = @This();
 const Labyrinth = @import("Labyrinth.zig");
-const Board = @import("Board.zig");
+const Maze = @import("Maze.zig");
 const utils = @import("utils.zig");
 
 iter: std.process.ArgIterator,
@@ -19,26 +19,26 @@ pub fn init(alloc: Allocator) !CommandLineArgs {
     return CommandLineArgs{ .alloc = alloc, .iter = iter, .program_name = program_name };
 }
 
-pub fn createLabyrinth(this: CommandLineArgs) !Labyrinth {
-    var board: Board = undefined;
+pub fn createLabyrinth(cla: CommandLineArgs) !Labyrinth {
+    var maze: Maze = undefined;
 
-    if (this.filename) |filename| {
-        var contents = try utils.readFile(this.alloc, filename);
-        defer this.alloc.free(contents);
-        board = try Board.init(this.alloc, filename, contents);
-    } else if (this.expr) |expr| {
-        board = try Board.init(this.alloc, "-e", expr);
+    if (cla.filename) |filename| {
+        var contents = try utils.readFile(cla.alloc, filename);
+        defer cla.alloc.free(contents);
+        maze = try Maze.init(cla.alloc, filename, contents);
+    } else if (cla.expr) |expr| {
+        maze = try Maze.init(cla.alloc, "-e", expr);
     } else {
-        this.stop(.err, "either `-e` or a filename must be given", .{});
+        cla.stop(.err, "either `-e` or a filename must be given", .{});
     }
 
-    errdefer board.deinit(this.alloc);
+    errdefer maze.deinit(cla.alloc);
 
-    return try Labyrinth.init(this.alloc, board, this.options);
+    return try Labyrinth.init(cla.alloc, maze, cla.options);
 }
 
-pub fn deinit(this: *CommandLineArgs) void {
-    this.iter.deinit();
+pub fn deinit(cla: *CommandLineArgs) void {
+    cla.iter.deinit();
 }
 
 // zig fmt: off
@@ -54,12 +54,12 @@ const Option = enum {
 
 const Status = enum { ok, err };
 fn stop(
-    this: *const CommandLineArgs,
+    cla: *const CommandLineArgs,
     comptime status: Status,
     comptime fmt: []const u8,
     fmtArgs: anytype,
 ) noreturn {
-    stopNoPrefix(status, "{s}: " ++ fmt, .{this.program_name} ++ fmtArgs);
+    stopNoPrefix(status, "{s}: " ++ fmt, .{cla.program_name} ++ fmtArgs);
 }
 
 fn stopNoPrefix(comptime status: Status, comptime fmt: []const u8, fmt_args: anytype) noreturn {
@@ -69,37 +69,37 @@ fn stopNoPrefix(comptime status: Status, comptime fmt: []const u8, fmt_args: any
     std.process.exit(if (status == .ok) 0 else 1);
 }
 
-fn nextPositional(this: *CommandLineArgs, option: Option) []const u8 {
-    return this.iter.next() orelse {
-        this.stop(.err, "missing positional argument for {s}", .{std.meta.tagName(option)});
+fn nextPositional(cla: *CommandLineArgs, option: Option) []const u8 {
+    return cla.iter.next() orelse {
+        cla.stop(.err, "missing positional argument for {s}", .{std.meta.tagName(option)});
     };
 }
 
-pub fn parse(this: *CommandLineArgs) !void {
-    while (this.iter.next()) |flagname| {
+pub fn parse(cla: *CommandLineArgs) !void {
+    while (cla.iter.next()) |flagname| {
         // ignore empty flags
         if (flagname.len == 0)
             continue;
 
         const option = std.meta.stringToEnum(Option, flagname) orelse {
-            if (flagname[0] == '-') this.stop(.err, "unknown flag: {s}", .{flagname});
-            this.filename = flagname;
+            if (flagname[0] == '-') cla.stop(.err, "unknown flag: {s}", .{flagname});
+            cla.filename = flagname;
             break;
         };
 
         switch (option) {
             .@"-" => {
-                this.filename = "-";
+                cla.filename = "-";
                 break;
             },
-            .@"-h", .@"--help" => this.writeUsage(),
+            .@"-h", .@"--help" => cla.writeUsage(),
             .@"-v", .@"--version" => writeVersion(),
-            .@"-d", .@"--debug" => this.options.debug = true,
+            .@"-d", .@"--debug" => cla.options.debug = true,
             .@"-e", .@"--expr" => {
-                this.expr = this.nextPositional(option);
+                cla.expr = cla.nextPositional(option);
                 break;
             },
-            .@"--chdir" => try std.os.chdir(this.nextPositional(option)),
+            .@"--chdir" => try std.os.chdir(cla.nextPositional(option)),
         }
     }
 }
@@ -110,15 +110,15 @@ fn writeVersion() noreturn {
     stopNoPrefix(.ok, "v{s}", .{version});
 }
 
-fn writeUsage(this: *const CommandLineArgs) noreturn {
+fn writeUsage(cla: *const CommandLineArgs) noreturn {
     stopNoPrefix(.ok,
         \\Labyrinth {s}
         \\usage: {s} [flags] (-e expr | filename)
         \\flags:
-        \\  -h        shows this
+        \\  -h        shows cla
         \\  -v        prints version
         \\  -d        enables debug mode
         \\If a file is `-`, data is read from stdin.
         \\
-    , .{ version, this.program_name });
+    , .{ version, cla.program_name });
 }

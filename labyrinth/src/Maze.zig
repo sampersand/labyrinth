@@ -4,43 +4,44 @@ const Function = @import("function.zig").Function;
 const Minotaur = @import("Minotaur.zig");
 const Coordinate = @import("Coordinate.zig");
 const utils = @import("utils.zig");
-const Board = @This();
+const Maze = @This();
 
-// Note that on the board, `(0,0)` is the upper left; `y` is the line and `x` is the col.
+// Note that on the maze, `(0,0)` is the upper left; `y` is the line and `x` is the col.
 filename: []const u8,
 lines: std.ArrayListUnmanaged([]u8),
 max_x: usize = 0,
 
-fn parseBoard(board: *Board, alloc: Allocator, source: []const u8) Allocator.Error!void {
+fn parseMaze(maze: *Maze, alloc: Allocator, source: []const u8) Allocator.Error!void {
     var iter = std.mem.split(u8, source, "\n");
     while (iter.next()) |line| {
         var dup = try alloc.dupe(u8, line);
         errdefer alloc.free(dup);
 
-        if (line.len > board.max_x) board.max_x = line.len;
-        try board.lines.append(alloc, @ptrCast([]u8, dup));
+        if (line.len > maze.max_x) maze.max_x = line.len;
+        try maze.lines.append(alloc, @ptrCast([]u8, dup));
     }
 }
 
-pub fn init(alloc: Allocator, filename: []const u8, source: []const u8) Allocator.Error!Board {
-    var board = Board{
+pub fn init(alloc: Allocator, filename: []const u8, source: []const u8) Allocator.Error!Maze {
+    var maze = Maze{
         .filename = filename,
         .lines = try std.ArrayListUnmanaged([]u8).initCapacity(alloc, 8),
     };
-    errdefer board.deinit(alloc);
+    errdefer maze.deinit(alloc);
 
-    try board.parseBoard(alloc, source);
-    return board;
+    try maze.parseMaze(alloc, source);
+    return maze;
 }
 
-pub fn deinit(this: *Board, alloc: Allocator) void {
-    for (this.lines.items) |line| alloc.free(line);
-    this.lines.deinit(alloc);
+pub fn deinit(maze: *Maze, alloc: Allocator) void {
+    for (maze.lines.items) |line|
+        alloc.free(line);
+    maze.lines.deinit(alloc);
 }
 
 pub const GetError = error{OutOfBounds};
-pub fn get(this: *const Board, pos: Coordinate) GetError!u8 {
-    const line = utils.safeIndex(this.lines.items, @as(usize, pos.y)) orelse return error.OutOfBounds;
+pub fn get(maze: *const Maze, pos: Coordinate) GetError!u8 {
+    const line = utils.safeIndex(maze.lines.items, @as(usize, pos.y)) orelse return error.OutOfBounds;
     return utils.safeIndex(line, @as(usize, pos.x)) orelse return error.OutOfBounds;
 }
 
@@ -61,7 +62,7 @@ fn printXHeadings(writer: anytype, max_x: usize, max_y_len: usize) std.os.WriteE
     }
 }
 
-pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) std.os.WriteError!void {
+pub fn printMaze(maze: *const Maze, minotaurs: []Minotaur, writer: anytype) std.os.WriteError!void {
     const Cursor = struct {
         idx: usize,
         id: usize,
@@ -76,12 +77,12 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
     const allocator = arena.allocator();
     var indices = std.ArrayList(Cursor).initCapacity(allocator, minotaurs.len) catch @panic("oops?");
 
-    try writer.print("file: {s}\n", .{this.filename});
+    try writer.print("file: {s}\n", .{maze.filename});
 
-    const max_y_len = std.math.log10(this.lines.items.len) + 1;
-    try printXHeadings(writer, this.max_x, max_y_len);
+    const max_y_len = std.math.log10(maze.lines.items.len) + 1;
+    try printXHeadings(writer, maze.max_x, max_y_len);
 
-    for (this.lines.items) |line, col| {
+    for (maze.lines.items) |line, col| {
         indices.clearRetainingCapacity();
 
         for (minotaurs) |minotaur| {

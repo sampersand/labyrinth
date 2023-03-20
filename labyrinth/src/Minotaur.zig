@@ -8,7 +8,7 @@ const Value = @import("value.zig").Value;
 const Function = @import("function.zig").Function;
 const IntType = @import("types.zig").IntType;
 const Array = @import("Array.zig");
-const Board = @import("Board.zig");
+const Maze = @import("Maze.zig");
 const utils = @import("utils.zig");
 
 position: Coordinate = Coordinate.Origin,
@@ -102,7 +102,7 @@ pub fn step(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
     if (this.is_first) {
         this.is_first = false;
     } else try this.advance();
-    const byte = try labyrinth.board.get(this.position);
+    const byte = try labyrinth.maze.get(this.position);
 
     switch (this.mode) {
         .normal => {},
@@ -150,7 +150,7 @@ const PlayError = error{
     IntOutOfBounds,
     StackTooSmall,
     StackTooLarge,
-} || Board.GetError || std.os.WriteError || Allocator.Error ||
+} || Maze.GetError || std.os.WriteError || Allocator.Error ||
     Array.ParseIntError || Function.ValidateError || Value.OrdError || Value.MathError ||
     Coordinate.MoveError;
 

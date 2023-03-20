@@ -1,7 +1,8 @@
 const std = @import("std");
 
 pub const Function = enum(u8) {
-    // integer literals
+    // zig fmt: off
+    // Mode-changing functions.
     int0 = '0',
     int1 = '1',
     int2 = '2',
@@ -13,95 +14,96 @@ pub const Function = enum(u8) {
     int8 = '8',
     int9 = '9',
 
-    // mode changing functions
-    str = '\"',
-    ary = '[',
+    str     = '\"',
+    ary     = '[',
     ary_end = ']',
 
-    // stack manipulation
-    dup1 = '.',
-    dup2 = ':',
-    pop1 = ',',
-    pop2 = ';',
-    dup = '#',
-    pop = '@',
-    swap = '$',
-    stacklen = 'C',
+    // Stack manipulation & Querying
+    dup      = '#', // Duplicate the nth element, where n is the (popped) topmost element.
+    dup1     = '.', // Duplicate top element of the stack
+    dup2     = ':', // Duplicate the 2nd topmost element of the stack.
+    pop      = '@', // Pop the nth element, where n is the (popped) topmost element.
+    pop1     = ',', // Pop the top element of the stack.
+    pop2     = ';', // Pop the 2nd-to-top element of the stack.
+    swap     = '$', // Swap the top 2 elements of the stack.
+    stacklen = 'C', // Pushes the current length of the stack.
+    ifpop    = 'T', // Pops the 3rd-to-top if the top is truthy, else pop 2nd; top is always popped.
 
-    // directions
-    moveh = '-',
-    movev = '|',
-    right = '>',
-    left = '<',
-    up = '^',
-    down = 'v',
-    speedup = '{',
-    slowdown = '}',
-    jump1 = 'J',
-    jump = 'j',
-    sleep = 'z',
-    sleep1 = 'Z',
-    randdir = 'R',
-    // FGETPOS = 'r',
-    // FRETURN = 'R',
+    // Minotaur functions
+    moveh  = '-', // If moving horizontally, no-op; else go left and spawn a minotaur going right.
+    movev  = '|', // If moving vertically, no-op; else go left and spawn a minotaur going right.
+    spawnl = 'M', // Spawn a minotaur going left.
+    spawnr = 'm', // Spawn a minotaur going right.
+    slay1 = 'F', // todo
+    slay = 'f', // todo
 
-    // conditionals
-    ifr = '?',
-    ifl = 'I',
-    ifpop = 'T',
-    ifjump1 = 'K',
-    ifjump = 'k',
-    unlessjump1 = 'H',
-    unlessjump = 'h',
-    spawnl = 'M', // hire them
-    spawnr = 'm', // hire them
-    slay1 = 'F', // fire
-    slay = 'f', // fire n
+    // Movement Functions
+    right    = '>', // Set velocity to 1 unit rightwards.
+    left     = '<', // Set velocity to 1 unit leftwards.
+    up       = '^', // Set velocity to 1 unit upwards.
+    down     = 'v', // Set velocity to 1 unit downwards.
+    speedup  = '{', // Increase velocity by 1.
+    slowdown = '}', // Decrease velocity by 1.
+    jump1    = 'J', // Skip the next square.
+    jump     = 'j', // Skip the next n squares.
+    randdir  = 'R', // Move in a random direction.
 
-    // math
-    add = '+',
-    sub = '_', // `-` is used by FMOVEH already.
-    mul = '*',
-    div = '/',
-    mod = '%',
-    inc = 'X',
-    dec = 'x',
-    rand = 'r',
-    neg = '~',
+    // Conditional Movement.
+    ifr         = '?', // If the top element is falsey, turn right.
+    ifl         = 'I', // If the top element is falsey, turn left.
+    ifjump1     = 'K', // If the top element is falsey, skip the next square.
+    ifjump      = 'k', // If the 2nd-to-top element is falsey, skip the next n squares.
+    unlessjump1 = 'H', // If the top element is truthy, skip the next square.
+    unlessjump  = 'h', // If the 2nd-to-top element is truthy, skip the next n squares.
 
-    // comparisons
-    eql = '=',
-    lth = 'l',
-    gth = 'g',
-    cmp = 'c',
-    not = '!',
+    // Misc
+    sleep1    = 'Z', // Sleep for 1 tick.
+    sleep     = 'z', // Sleep for the next n ticks.
+    inccolour = 'U', // Increments the colour for the current minotaur.
+    setcolour = 'u', // Sets the colour to the topmost stack for the current minotaur.
 
-    // integer functions
-    chr = 'A',
-    ord = 'a',
-    tos = 's',
-    toi = 'i',
+    // Math
+    neg  = '~', // Negate the topmost element.
+    add  = '+', // Add the top two elements.
+    sub  = '_', // Subtract the topmost element from the 2nd-to-top element. (`-` is already used)
+    mul  = '*', // Multiply the top two elements.
+    div  = '/', // Divide the 2nd-to-top element by the topmost.
+    mod  = '%', // Modulo the 2nd-to-top element by the topmost.
+    inc  = 'X', // Increment the topmost element.
+    dec  = 'x', // Decrement the topmost element.
+    rand = 'r', // Push a random integer.
 
-    // ary functions
-    len = 'L',
-    get = 'G',
-    set = 'S',
+    // Logic
+    eql = '=', // Check to see if the top two elements are equal
+    lth = 'l', // See if the second-to-top element is less than the topmost.
+    gth = 'g', // See if the second-to-top element is less than the topmost.
+    cmp = 'c', // Compare the second-to-top element to the topmost.
+    not = '!', // Negate the topmost element.
+
+    // Integer & Array functions
+    chr = 'A', // [top]
+    ord = 'a', // top[0]
+    tos = 's', // Convert the topmost integer to a string.
+    toi = 'i', // Convert the topmost string to an int.
+    len = 'L', // Get the length of the topmost item.
+    get = 'G', // TODO
+    set = 'S', // TODO
 
     // io
-    printnl = 'P',
-    print = 'p',
-    dumpvalnl = 'N',
-    dumpval = 'n',
-    dumpq = 'D',
-    dump = 'd',
-    quit0 = 'Q',
-    quit = 'q',
-    gets = '(',
-    inccolour = 'U',
-    setcolour = 'u',
+    printnl   = 'P', // Print the topmost element with a newline. See print for details
+    print     = 'p', // Print topmost element; Ints are `putchar`, arys are `fputs(stdout)` w/o `\0`.
+    dumpvalnl = 'N', // Dumps the topmost element and a newline; prints its normally.
+    dumpval   = 'n', // Same as dumpval withotu the newline.
+    dumpq     = 'D', // Dumps the labyrinth and then exits.
+    dump      = 'd', // Dumps the labyrinth without quitting.
+    quit0     = 'Q', // Kills the current minotaur; Exits with code 0 if it's the last minotaur.
+    quit      = 'q', // Kills the current minotaur; Exits with code n if it's the last minotaur.
+    gets      = '(', // TODO
+    // zig fmt: on
 
-    pub fn toByte(this: Function) u8 {
-        return @enumToInt(this);
+    // Gets the byte representation of `func`.
+    pub inline fn toByte(func: Function) u8 {
+        return @enumToInt(func);
     }
 
     pub const ValidateError = error{NotAValidFunction};
@@ -111,8 +113,8 @@ pub const Function = enum(u8) {
 
     pub const MaxArgc = 4;
 
-    pub fn arity(this: Function) usize {
-        return switch (this) {
+    pub fn arity(func: Function) usize {
+        return switch (func) {
             .int0, .int1, .int2, .int3, .int4, .int5, .int6, .int7, .int8, .int9 => 0,
             .dup1, .dup2, .pop2, .swap, .stacklen, .inccolour => 0,
             .moveh, .movev, .up, .down, .left, .right, .speedup, .slowdown, .sleep1 => 0,
