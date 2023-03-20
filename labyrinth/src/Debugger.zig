@@ -170,7 +170,7 @@ const Command = union(enum) {
             .quit => unreachable, // should be handled in minotaur
             .jump_to => |j| {
                 var minotaur = try dbg.labyrinth.getMinotaur(j.id);
-                minotaur.isFirst = false;
+                minotaur.is_first = false;
                 if (j.position) |p| minotaur.position = p;
                 if (j.velocity) |v| minotaur.velocity = v;
             },

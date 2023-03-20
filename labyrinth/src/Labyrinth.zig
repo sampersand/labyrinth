@@ -34,7 +34,7 @@ pub fn init(alloc: Allocator, board: Board, options: Options) Allocator.Error!La
     errdefer minotaurs_to_spawn.deinit(alloc);
 
     var minotaur = try Minotaur.initCapacity(alloc, 8);
-    minotaur.isFirst = true;
+    minotaur.is_first = true;
     errdefer minotaur.deinit();
     try minotaurs.append(alloc, minotaur);
 

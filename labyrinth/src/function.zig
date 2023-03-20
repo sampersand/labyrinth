@@ -2,16 +2,16 @@ const std = @import("std");
 
 pub const Function = enum(u8) {
     // integer literals
-    int_0 = '0',
-    int_1 = '1',
-    int_2 = '2',
-    int_3 = '3',
-    int_4 = '4',
-    int_5 = '5',
-    int_6 = '6',
-    int_7 = '7',
-    int_8 = '8',
-    int_9 = '9',
+    int0 = '0',
+    int1 = '1',
+    int2 = '2',
+    int3 = '3',
+    int4 = '4',
+    int5 = '5',
+    int6 = '6',
+    int7 = '7',
+    int8 = '8',
+    int9 = '9',
 
     // mode changing functions
     str = '\"',
@@ -19,86 +19,86 @@ pub const Function = enum(u8) {
     ary_end = ']',
 
     // stack manipulation
-    dup = '.',
+    dup1 = '.',
     dup2 = ':',
-    pop = ',',
+    pop1 = ',',
     pop2 = ';',
-    dup_n = '#',
-    pop_n = '@',
+    dup = '#',
+    pop = '@',
     swap = '$',
-    stack_length = 'C',
+    stacklen = 'C',
 
     // directions
-    move_h = '-',
-    move_v = '|',
+    moveh = '-',
+    movev = '|',
     right = '>',
     left = '<',
     up = '^',
     down = 'v',
     speedup = '{',
     slowdown = '}',
-    jump_1 = 'J',
-    jump_n = 'j',
-    sleep_n = 'z',
-    sleep_1 = 'Z',
-    rand_direction = 'R',
+    jump1 = 'J',
+    jump = 'j',
+    sleep = 'z',
+    sleep1 = 'Z',
+    randdir = 'R',
     // FGETPOS = 'r',
     // FRETURN = 'R',
 
     // conditionals
-    right_if = '?',
-    left_if = 'I',
-    pop_select = 'T',
-    jump_1_if = 'K',
-    jump_n_if = 'k',
-    jump_1_unless = 'H',
-    jump_n_unless = 'h',
-    spawn_left = 'M', // hire them
-    spawn_right = 'm', // hire them
-    slay_1 = 'F', // fire
-    slay_n = 'f', // fire n
+    ifr = '?',
+    ifl = 'I',
+    ifpop = 'T',
+    ifjump1 = 'K',
+    ifjump = 'k',
+    unlessjump1 = 'H',
+    unlessjump = 'h',
+    spawnl = 'M', // hire them
+    spawnr = 'm', // hire them
+    slay1 = 'F', // fire
+    slay = 'f', // fire n
 
     // math
     add = '+',
-    subtract = '_', // `-` is used by FMOVEH already.
-    multiply = '*',
-    divide = '/',
-    modulo = '%',
-    increment = 'X',
-    decrement = 'x',
-    random = 'r',
-    negate = '~',
+    sub = '_', // `-` is used by FMOVEH already.
+    mul = '*',
+    div = '/',
+    mod = '%',
+    inc = 'X',
+    dec = 'x',
+    rand = 'r',
+    neg = '~',
 
     // comparisons
-    are_equal = '=',
-    is_less_than = 'l',
-    is_greater_than = 'g',
-    compare = 'c',
+    eql = '=',
+    lth = 'l',
+    gth = 'g',
+    cmp = 'c',
     not = '!',
 
     // integer functions
     chr = 'A',
     ord = 'a',
-    to_str = 's',
-    to_int = 'i',
+    tos = 's',
+    toi = 'i',
 
     // ary functions
-    length = 'L',
+    len = 'L',
     get = 'G',
     set = 'S',
 
     // io
-    print_newline = 'P',
+    printnl = 'P',
     print = 'p',
-    dump_value_newline = 'N',
-    dump_value = 'n',
-    dump_labryinth_quit = 'D',
-    dump_labryinth = 'd',
-    quit_0 = 'Q',
-    quit_n = 'q',
-    get_string = '(',
-    increment_colour = 'U',
-    set_colour = 'u',
+    dumpvalnl = 'N',
+    dumpval = 'n',
+    dumpq = 'D',
+    dump = 'd',
+    quit0 = 'Q',
+    quit = 'q',
+    gets = '(',
+    inccolour = 'U',
+    setcolour = 'u',
 
     pub fn toByte(this: Function) u8 {
         return @enumToInt(this);
@@ -113,20 +113,20 @@ pub const Function = enum(u8) {
 
     pub fn arity(this: Function) usize {
         return switch (this) {
-            .int_0, .int_1, .int_2, .int_3, .int_4, .int_5, .int_6, .int_7, .int_8, .int_9 => 0,
-            .dup, .dup2, .pop2, .swap, .stack_length, .inccolour => 0,
-            .move_h, .move_v, .up, .down, .left, .right, .speedup, .slowdown, .sleep1 => 0,
+            .int0, .int1, .int2, .int3, .int4, .int5, .int6, .int7, .int8, .int9 => 0,
+            .dup1, .dup2, .pop2, .swap, .stacklen, .inccolour => 0,
+            .moveh, .movev, .up, .down, .left, .right, .speedup, .slowdown, .sleep1 => 0,
             .dump, .dumpq, .quit0, .gets, .str, .jump1, .randdir, .rand, .spawnl, .spawnr => 0,
 
-            .pop, .dupn, .popn, .not, .chr, .ord, .tos, .toi, .inc, .dec => 1,
-            .ifl, .ifr, .ifpop, .jumpunless, .jumpif, .jumpn, .quit, .len => 1,
-            .print, .printnl, .dumpval, .dumpvalnl, .sleepn, .setcolour => 1,
+            .pop1, .dup, .pop, .not, .chr, .ord, .tos, .toi, .inc, .dec, .neg => 1,
+            .ifl, .ifr, .ifpop, .unlessjump1, .ifjump1, .jump, .quit, .len => 1,
+            .print, .printnl, .dumpval, .dumpvalnl, .sleep, .setcolour => 1,
 
-            .add, .sub, .mul, .div, .mod, .eql, .lth, .gth, .cmp, .jumpnunless, .jumpnif => 2,
+            .add, .sub, .mul, .div, .mod, .eql, .lth, .gth, .cmp, .unlessjump, .ifjump => 2,
             .get => 3,
             .set => 4,
 
-            .ary, .aryend, .ifpopold, .slay1, .slayn => @panic("todo"),
+            .ary, .ary_end, .slay1, .slay => @panic("todo"),
         };
     }
 };

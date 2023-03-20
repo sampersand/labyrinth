@@ -116,7 +116,7 @@ pub fn step(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
             this.mode = .normal;
         },
         .string => |ary| {
-            if (byte != comptime Function.Str.toByte()) {
+            if (byte != comptime Function.str.toByte()) {
                 try ary.push(this.allocator, Value.from(@intCast(IntType, byte)));
             } else {
                 try this.push(Value.from(ary));
@@ -206,101 +206,102 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
 
     try this.setArguments(function.arity());
     defer this.deinitArgs(function.arity());
-    var returnValue: ?Value = null;
+    var return_value: ?Value = null;
 
     switch (function) {
-        .I0, .I1, .I2, .I3, .I4, .I5, .I6, .I7, .I8, .I9 => this.mode = .{
+        .int0, .int1, .int2, .int3, .int4, .int5, .int6, .int7, .int8, .int9 => this.mode = .{
             .integer = parseDigit(function.toByte()) orelse unreachable,
         },
-        .Str => this.mode = .{ .string = try Array.init(this.allocator) },
-        .DumpQ, .Dump => {
+        .str => this.mode = .{ .string = try Array.init(this.allocator) },
+        .dumpq, .dump => {
             try utils.println("{any}", .{labyrinth});
-            if (function == .DumpQ) this.exit_status = 0;
+            if (function == .dumpq) this.exit_status = 0;
         },
-        .Quit0 => this.exit_status = 0,
-        .Quit => this.exit_status = try castInt(u8, try this.args[0].toInt()),
+        .quit0 => this.exit_status = 0,
+        .quit => this.exit_status = try castInt(u8, try this.args[0].toInt()),
 
-        .MoveH, .MoveV => {
-            const perpendicular = 0 != if (function == .MoveH) this.velocity.x else this.velocity.y;
+        .moveh, .movev => {
+            const perpendicular = 0 != if (function == .moveh) this.velocity.x else this.velocity.y;
             if (!perpendicular) {
                 // TODO: when `@cold` comes out make the `!perpendicular` branch cold.
-                try labyrinth.spawnMinotaur(try this.cloneRotate(.Left));
-                this.velocity = this.velocity.rotate(.Right);
+                try labyrinth.spawnMinotaur(try this.cloneRotate(.left));
+                this.velocity = this.velocity.rotate(.right);
             }
         },
-        .Left => this.velocity = Vector.Left,
-        .Right => this.velocity = Vector.Right,
-        .Up => this.velocity = Vector.Up,
-        .Down => this.velocity = Vector.Down,
-        .SpeedUp => this.velocity = this.velocity.speedUp(),
-        .SlowDown => this.velocity = this.velocity.slowDown(),
-        .Jump1 => try this.advance(),
-        .JumpN => try this.jumpn(this.args[0]),
-        .Dup => returnValue = try this.dupn(1),
-        .Dup2 => returnValue = try this.dupn(2),
-        .DupN => returnValue = try this.dupn(try castInt(usize, try this.args[0].toInt())),
-        .Pop => {},
-        .Pop2 => _ = try this.popn(2),
-        .PopN => returnValue = try this.popn(try castInt(usize, try this.args[0].toInt())),
-        .Swap => returnValue = try this.popn(2),
-        .StackLen => returnValue = Value.from(
+        .left => this.velocity = Vector.Left,
+        .right => this.velocity = Vector.Right,
+        .up => this.velocity = Vector.Up,
+        .down => this.velocity = Vector.Down,
+        .speedup => this.velocity = this.velocity.speedUp(),
+        .slowdown => this.velocity = this.velocity.slowDown(),
+        .jump1 => try this.advance(),
+        .jump => try this.jumpn(this.args[0]),
+        .dup1 => return_value = try this.dupn(1),
+        .dup2 => return_value = try this.dupn(2),
+        .dup => return_value = try this.dupn(try castInt(usize, try this.args[0].toInt())),
+        .pop1 => {},
+        .pop2 => _ = try this.popn(2),
+        .pop => return_value = try this.popn(try castInt(usize, try this.args[0].toInt())),
+        .swap => return_value = try this.popn(2),
+        .stacklen => return_value = Value.from(
             std.math.cast(IntType, this.stack.items.len) orelse return error.StackTooLarge,
         ),
 
-        .IfL, .IfR => if (!this.args[0].isTruthy()) {
-            this.velocity = this.velocity.rotate(if (function == .IfR) .Right else .Left);
+        .ifr, .ifl => if (!this.args[0].isTruthy()) {
+            this.velocity = this.velocity.rotate(if (function == .ifl) .left else .right);
         },
-        .IfPop => _ = try this.popn(if (this.args[0].isTruthy()) 2 else 1),
-        .JumpUnless => if (!this.args[0].isTruthy()) try this.advance(),
-        .JumpNUnless => if (!this.args[0].isTruthy()) try this.jumpn(this.args[1]),
-        .JumpIf => if (this.args[0].isTruthy()) try this.advance(),
-        .JumpNIf => if (this.args[0].isTruthy()) try this.jumpn(this.args[1]),
+        .ifpop => _ = try this.popn(if (this.args[0].isTruthy()) 2 else 1),
+        .unlessjump1 => if (!this.args[0].isTruthy()) try this.advance(),
+        .unlessjump => if (!this.args[0].isTruthy()) try this.jumpn(this.args[1]),
+        .ifjump1 => if (this.args[0].isTruthy()) try this.advance(),
+        .ifjump => if (this.args[0].isTruthy()) try this.jumpn(this.args[1]),
 
-        .Rand => returnValue = Value.from(labyrinth.rng.random().int(IntType)),
-        .RandDir => this.velocity = randomVelocity(&labyrinth.rng),
-        .DumpValNL => try utils.println("{}", .{this.args[0]}),
-        .DumpVal => try utils.print("{}", .{this.args[0]}),
+        .rand => return_value = Value.from(labyrinth.rng.random().int(IntType)),
+        .randdir => this.velocity = randomVelocity(&labyrinth.rng),
+        .dumpvalnl => try utils.println("{}", .{this.args[0]}),
+        .dumpval => try utils.print("{}", .{this.args[0]}),
 
-        .PrintNL, .Print => {
+        .printnl, .print => {
             var writer = std.io.getStdOut().writer();
             try this.args[0].print(writer);
-            if (function == .PrintNL) try writer.writeAll("\n");
+            if (function == .printnl) try writer.writeAll("\n");
         },
 
-        .IncColour => this.colour +%= 1,
-        .SetColour => this.colour = @bitCast(u8, @truncate(i8, try this.args[0].toInt())),
+        .inccolour => this.colour +%= 1,
+        .setcolour => this.colour = @bitCast(u8, @truncate(i8, try this.args[0].toInt())),
 
-        .Sleep1 => this.steps_ahead = 1,
-        .SleepN => this.steps_ahead = try castInt(usize, try this.args[0].toInt()),
+        .sleep1 => this.steps_ahead = 1,
+        .sleep => this.steps_ahead = try castInt(usize, try this.args[0].toInt()),
 
-        .SpawnL => try labyrinth.spawnMinotaur(try this.cloneRotate(.Left)),
-        .SpawnR => try labyrinth.spawnMinotaur(try this.cloneRotate(.Right)),
+        .spawnl => try labyrinth.spawnMinotaur(try this.cloneRotate(.left)),
+        .spawnr => try labyrinth.spawnMinotaur(try this.cloneRotate(.right)),
 
-        .Inc => returnValue = try this.args[0].add(this.allocator, Value.from(1)),
-        .Dec => returnValue = try this.args[0].sub(this.allocator, Value.from(1)),
-        .Add => returnValue = try this.args[1].add(this.allocator, this.args[0]),
-        .Sub => returnValue = try this.args[1].sub(this.allocator, this.args[0]),
-        .Mul => returnValue = try this.args[1].mul(this.allocator, this.args[0]),
-        .Div => returnValue = try this.args[1].div(this.allocator, this.args[0]),
-        .Mod => returnValue = try this.args[1].mod(this.allocator, this.args[0]),
+        .inc => return_value = try this.args[0].add(this.allocator, Value.from(1)),
+        .dec => return_value = try this.args[0].sub(this.allocator, Value.from(1)),
+        .add => return_value = try this.args[1].add(this.allocator, this.args[0]),
+        .sub => return_value = try this.args[1].sub(this.allocator, this.args[0]),
+        .mul => return_value = try this.args[1].mul(this.allocator, this.args[0]),
+        .div => return_value = try this.args[1].div(this.allocator, this.args[0]),
+        .mod => return_value = try this.args[1].mod(this.allocator, this.args[0]),
+        .neg => return_value = try this.args[0].mul(this.allocator, Value.from(-1)),
 
-        .Not => returnValue = Value.from(!this.args[0].isTruthy()),
-        .Eql => returnValue = Value.from(this.args[1].equals(this.args[0])),
-        .Lth => returnValue = Value.from(this.args[1].cmp(this.args[0]) < 0),
-        .Gth => returnValue = Value.from(this.args[1].cmp(this.args[0]) > 0),
-        .Cmp => returnValue = Value.from(this.args[1].cmp(this.args[0])),
+        .not => return_value = Value.from(!this.args[0].isTruthy()),
+        .eql => return_value = Value.from(this.args[1].equals(this.args[0])),
+        .lth => return_value = Value.from(this.args[1].cmp(this.args[0]) < 0),
+        .gth => return_value = Value.from(this.args[1].cmp(this.args[0]) > 0),
+        .cmp => return_value = Value.from(this.args[1].cmp(this.args[0])),
 
-        .Ary, .AryEnd, .Ifpopold, .Slay1, .SlayN, .Gets, .Get, .Set => @panic("todo"),
+        .ary, .ary_end, .slay1, .slay, .gets, .get, .set => @panic("todo"),
 
-        .ToI => returnValue = Value.from(try this.args[0].toInt()),
-        .ToS => returnValue = Value.from(try this.args[0].toString(this.allocator)),
+        .toi => return_value = Value.from(try this.args[0].toInt()),
+        .tos => return_value = Value.from(try this.args[0].toString(this.allocator)),
 
-        .Ord => returnValue = try this.args[0].ord(),
-        .Chr => returnValue = try this.args[0].chr(this.allocator),
-        .Len => returnValue = Value.from(
+        .ord => return_value = try this.args[0].ord(),
+        .chr => return_value = try this.args[0].chr(this.allocator),
+        .len => return_value = Value.from(
             std.math.cast(IntType, this.args[0].len()) orelse return error.IntOutOfBounds,
         ),
     }
 
-    if (returnValue) |value| try this.push(value);
+    if (return_value) |value| try this.push(value);
 }

@@ -65,11 +65,11 @@ pub inline fn scale(this: Vector, scalar: i32) Vector {
     return .{ .x = this.x * scalar, .y = this.y * scalar };
 }
 
-pub const Direction = enum { Left, Right };
+pub const Direction = enum { left, right };
 pub fn rotate(this: Vector, dir: Direction) Vector {
     return switch (dir) {
-        .Left => .{ .x = this.y, .y = -this.x },
-        .Right => .{ .x = -this.y, .y = this.x },
+        .left => .{ .x = this.y, .y = -this.x },
+        .right => .{ .x = -this.y, .y = this.x },
     };
 }
 

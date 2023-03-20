@@ -26,6 +26,6 @@ pub fn main() !u8 {
         return 0;
     } else {
         _ = try labyrinth.play();
-        return labyrinth.exitStatus orelse 0;
+        return labyrinth.exit_status orelse 0;
     }
 }

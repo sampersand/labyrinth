@@ -35,8 +35,8 @@ pub fn build(b: *std.build.Builder) void {
     const build_options = b.addOptions();
     exe.addOptions("build-options", build_options);
     build_options.addOption(
-        ?usize,
+        usize,
         "max_velocity",
-        b.option(usize, "max-velocity", "Maximum Velocity"),
+        b.option(usize, "max-velocity", "Maximum Velocity") orelse 0,
     );
 }
