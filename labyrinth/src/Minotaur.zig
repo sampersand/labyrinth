@@ -16,12 +16,12 @@ velocity: Vector = Vector.Right,
 allocator: Allocator,
 stack: std.ArrayListUnmanaged(Value),
 args: [Function.MaxArgc]Value = undefined,
-mode: union(enum) { Normal, Integer: IntType, String: *Array } = .Normal,
-stepsAhead: usize = 0,
-isFirst: bool = false,
+mode: union(enum) { normal, integer: IntType, string: *Array } = .normal,
+steps_ahead: usize = 0,
+is_first: bool = false,
 colour: u8,
-exitStatus: ?u8 = null,
-prevPositions: [5]Coordinate = .{Coordinate.Origin} ** 5,
+exit_status: ?u8 = null,
+prev_positions: [5]Coordinate = .{Coordinate.Origin} ** 5,
 
 pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!Minotaur {
     return Minotaur{
@@ -41,9 +41,9 @@ pub fn advance(this: *Minotaur) Coordinate.MoveError!void {
     std.debug.assert(!this.hasExited());
     var i: usize = 4;
     while (i != 0) : (i -= 1) {
-        this.prevPositions[i] = this.prevPositions[i - 1];
+        this.prev_positions[i] = this.prev_positions[i - 1];
     }
-    this.prevPositions[0] = this.position;
+    this.prev_positions[0] = this.position;
     this.position = try this.position.moveBy(this.velocity);
 }
 
@@ -55,7 +55,7 @@ pub fn nth(this: *const Minotaur, idx: usize) StackError!Value {
 }
 
 pub fn hasExited(this: *const Minotaur) bool {
-    return this.exitStatus != null;
+    return this.exit_status != null;
 }
 
 pub fn dupn(this: *const Minotaur, idx: usize) StackError!Value {
@@ -94,40 +94,40 @@ pub fn format(
 }
 
 pub fn step(this: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
-    if (this.stepsAhead != 0) {
-        this.stepsAhead -= 1;
+    if (this.steps_ahead != 0) {
+        this.steps_ahead -= 1;
         return;
     }
 
-    if (this.isFirst) {
-        this.isFirst = false;
+    if (this.is_first) {
+        this.is_first = false;
     } else try this.advance();
-    const chr = try labyrinth.board.get(this.position);
+    const byte = try labyrinth.board.get(this.position);
 
     switch (this.mode) {
-        .Normal => {},
-        .Integer => |*int| {
-            if (parseDigit(chr)) |digit| {
+        .normal => {},
+        .integer => |*int| {
+            if (parseDigit(byte)) |digit| {
                 int.* = 10 * int.* + digit;
                 return;
             }
 
             try this.push(Value.from(int.*));
-            this.mode = .Normal;
+            this.mode = .normal;
         },
-        .String => |ary| {
-            if (chr != comptime Function.Str.toByte()) {
-                try ary.push(this.allocator, Value.from(@intCast(IntType, chr)));
+        .string => |ary| {
+            if (byte != comptime Function.Str.toByte()) {
+                try ary.push(this.allocator, Value.from(@intCast(IntType, byte)));
             } else {
                 try this.push(Value.from(ary));
-                this.mode = .Normal;
+                this.mode = .normal;
             }
 
             return;
         },
     }
 
-    return this.traverse(labyrinth, Function.fromChar(chr) catch |err| {
+    return this.traverse(labyrinth, Function.fromByte(byte) catch |err| {
         return std.log.err("error: {}", .{err});
     });
 }
@@ -170,7 +170,7 @@ pub fn clone(this: *const Minotaur) Allocator.Error!Minotaur {
         .colour = this.colour +% 1,
         .mode = this.mode,
         .stack = stack,
-        .prevPositions = this.prevPositions,
+        .prev_positions = this.prev_positions,
     };
 }
 
@@ -202,7 +202,7 @@ fn randomVelocity(rng: *std.rand.DefaultPrng) Vector {
 }
 
 fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayError!void {
-    std.debug.assert(this.stepsAhead == 0);
+    std.debug.assert(this.steps_ahead == 0);
 
     try this.setArguments(function.arity());
     defer this.deinitArgs(function.arity());
@@ -210,15 +210,15 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
 
     switch (function) {
         .I0, .I1, .I2, .I3, .I4, .I5, .I6, .I7, .I8, .I9 => this.mode = .{
-            .Integer = parseDigit(function.toByte()) orelse unreachable,
+            .integer = parseDigit(function.toByte()) orelse unreachable,
         },
-        .Str => this.mode = .{ .String = try Array.init(this.allocator) },
+        .Str => this.mode = .{ .string = try Array.init(this.allocator) },
         .DumpQ, .Dump => {
             try utils.println("{any}", .{labyrinth});
-            if (function == .DumpQ) this.exitStatus = 0;
+            if (function == .DumpQ) this.exit_status = 0;
         },
-        .Quit0 => this.exitStatus = 0,
-        .Quit => this.exitStatus = try castInt(u8, try this.args[0].toInt()),
+        .Quit0 => this.exit_status = 0,
+        .Quit => this.exit_status = try castInt(u8, try this.args[0].toInt()),
 
         .MoveH, .MoveV => {
             const perpendicular = 0 != if (function == .MoveH) this.velocity.x else this.velocity.y;
@@ -270,8 +270,8 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .IncColour => this.colour +%= 1,
         .SetColour => this.colour = @bitCast(u8, @truncate(i8, try this.args[0].toInt())),
 
-        .Sleep1 => this.stepsAhead = 1,
-        .SleepN => this.stepsAhead = try castInt(usize, try this.args[0].toInt()),
+        .Sleep1 => this.steps_ahead = 1,
+        .SleepN => this.steps_ahead = try castInt(usize, try this.args[0].toInt()),
 
         .SpawnL => try labyrinth.spawnMinotaur(try this.cloneRotate(.Left)),
         .SpawnR => try labyrinth.spawnMinotaur(try this.cloneRotate(.Right)),

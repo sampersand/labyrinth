@@ -6,26 +6,26 @@ const Board = @import("Board.zig");
 const utils = @import("utils.zig");
 
 iter: std.process.ArgIterator,
-programName: []const u8,
+program_name: []const u8,
 alloc: Allocator,
 options: Labyrinth.Options = .{},
-fileName: ?[]const u8 = null,
+filename: ?[]const u8 = null,
 expr: ?[]const u8 = null,
 
 pub fn init(alloc: Allocator) !CommandLineArgs {
     var iter = try std.process.ArgIterator.initWithAllocator(alloc);
-    const programName = iter.next() orelse return error.NoProgramName;
+    const program_name = iter.next() orelse return error.NoProgramName;
 
-    return CommandLineArgs{ .alloc = alloc, .iter = iter, .programName = programName };
+    return CommandLineArgs{ .alloc = alloc, .iter = iter, .program_name = program_name };
 }
 
 pub fn createLabyrinth(this: CommandLineArgs) !Labyrinth {
     var board: Board = undefined;
 
-    if (this.fileName) |fileName| {
-        var contents = try utils.readFile(this.alloc, fileName);
+    if (this.filename) |filename| {
+        var contents = try utils.readFile(this.alloc, filename);
         defer this.alloc.free(contents);
-        board = try Board.init(this.alloc, fileName, contents);
+        board = try Board.init(this.alloc, filename, contents);
     } else if (this.expr) |expr| {
         board = try Board.init(this.alloc, "-e", expr);
     } else {
@@ -59,13 +59,13 @@ fn stop(
     comptime fmt: []const u8,
     fmtArgs: anytype,
 ) noreturn {
-    stopNoPrefix(status, "{s}: " ++ fmt, .{this.programName} ++ fmtArgs);
+    stopNoPrefix(status, "{s}: " ++ fmt, .{this.program_name} ++ fmtArgs);
 }
 
-fn stopNoPrefix(comptime status: Status, comptime fmt: []const u8, fmtArgs: anytype) noreturn {
+fn stopNoPrefix(comptime status: Status, comptime fmt: []const u8, fmt_args: anytype) noreturn {
     const printFunc = if (status == .ok) utils.println else utils.eprintln;
 
-    printFunc(fmt, fmtArgs) catch @panic("cant stop with prefix?");
+    printFunc(fmt, fmt_args) catch @panic("cant stop with prefix?");
     std.process.exit(if (status == .ok) 0 else 1);
 }
 
@@ -76,20 +76,20 @@ fn nextPositional(this: *CommandLineArgs, option: Option) []const u8 {
 }
 
 pub fn parse(this: *CommandLineArgs) !void {
-    while (this.iter.next()) |flagName| {
+    while (this.iter.next()) |flagname| {
         // ignore empty flags
-        if (flagName.len == 0)
+        if (flagname.len == 0)
             continue;
 
-        const option = std.meta.stringToEnum(Option, flagName) orelse {
-            if (flagName[0] == '-') this.stop(.err, "unknown flag: {s}", .{flagName});
-            this.fileName = flagName;
+        const option = std.meta.stringToEnum(Option, flagname) orelse {
+            if (flagname[0] == '-') this.stop(.err, "unknown flag: {s}", .{flagname});
+            this.filename = flagname;
             break;
         };
 
         switch (option) {
             .@"-" => {
-                this.fileName = "-";
+                this.filename = "-";
                 break;
             },
             .@"-h", .@"--help" => this.writeUsage(),
@@ -120,5 +120,5 @@ fn writeUsage(this: *const CommandLineArgs) noreturn {
         \\  -d        enables debug mode
         \\If a file is `-`, data is read from stdin.
         \\
-    , .{ version, this.programName });
+    , .{ version, this.program_name });
 }

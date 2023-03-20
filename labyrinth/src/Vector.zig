@@ -5,10 +5,11 @@ const build_options = @import("build-options");
 ///
 /// They are used within `Minotaur` to keep track of the velocity.
 const Vector = @This();
-const VectorInt = if (build_options.max_velocity) |max|
-    std.math.IntFittingRange(0, max)
-else
-    i32;
+const VectorInt = i32;
+// if (build_options.max_velocity) |max|
+//     std.math.IntFittingRange(0, max)
+// else
+//     i32;
 
 /// The x coordinate of the vector.
 x: VectorInt = 0,

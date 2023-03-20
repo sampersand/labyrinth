@@ -9,7 +9,7 @@ const Board = @This();
 // Note that on the board, `(0,0)` is the upper left; `y` is the line and `x` is the col.
 filename: []const u8,
 lines: std.ArrayListUnmanaged([]u8),
-maxX: usize = 0,
+max_x: usize = 0,
 
 fn parseBoard(board: *Board, alloc: Allocator, source: []const u8) Allocator.Error!void {
     var iter = std.mem.split(u8, source, "\n");
@@ -17,7 +17,7 @@ fn parseBoard(board: *Board, alloc: Allocator, source: []const u8) Allocator.Err
         var dup = try alloc.dupe(u8, line);
         errdefer alloc.free(dup);
 
-        if (line.len > board.maxX) board.maxX = line.len;
+        if (line.len > board.max_x) board.max_x = line.len;
         try board.lines.append(alloc, @ptrCast([]u8, dup));
     }
 }
@@ -44,17 +44,17 @@ pub fn get(this: *const Board, pos: Coordinate) GetError!u8 {
     return utils.safeIndex(line, @as(usize, pos.x)) orelse return error.OutOfBounds;
 }
 
-fn printXHeadings(writer: anytype, maxX: usize, maxYLen: usize) std.os.WriteError!void {
-    var range = std.math.log10(maxX) + 1;
+fn printXHeadings(writer: anytype, max_x: usize, max_y_len: usize) std.os.WriteError!void {
+    var range = std.math.log10(max_x) + 1;
 
     while (range != 0) : (range -= 1) {
-        const repeatAmount = std.math.pow(usize, 10, range - 1);
-        try writer.writeByteNTimes(' ', maxYLen + repeatAmount);
+        const repeat_amount = std.math.pow(usize, 10, range - 1);
+        try writer.writeByteNTimes(' ', max_y_len + repeat_amount);
         var x: u8 = 1;
-        while (x <= @divTrunc(maxX, repeatAmount)) : (x += 1) {
+        while (x <= @divTrunc(max_x, repeat_amount)) : (x += 1) {
             try writer.writeByteNTimes('0' + (x % 10), std.math.min(
-                maxX - repeatAmount * x + 1,
-                repeatAmount,
+                max_x - repeat_amount * x + 1,
+                repeat_amount,
             ));
         }
         try writer.writeByte('\n');
@@ -70,7 +70,6 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
             return l.idx < r.idx;
         }
     };
-    // const colors = [4]usize{ 254, 248, 242, 236 };
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -79,8 +78,8 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
 
     try writer.print("file: {s}\n", .{this.filename});
 
-    const maxYLen = std.math.log10(this.lines.items.len) + 1;
-    try printXHeadings(writer, this.maxX, maxYLen);
+    const max_y_len = std.math.log10(this.lines.items.len) + 1;
+    try printXHeadings(writer, this.max_x, max_y_len);
 
     for (this.lines.items) |line, col| {
         indices.clearRetainingCapacity();
@@ -93,7 +92,7 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
                     .id = minotaur.colour,
                 }) catch unreachable;
 
-            for (minotaur.prevPositions) |pos, i|
+            for (minotaur.prev_positions) |pos, i|
                 if (pos.y == col and pos.x >= 0)
                     indices.append(.{
                         .idx = @intCast(usize, pos.x),
@@ -102,7 +101,7 @@ pub fn printBoard(this: *const Board, minotaurs: []Minotaur, writer: anytype) st
                     }) catch unreachable;
         }
 
-        try writer.print("{[c]d: >[l]} ", .{ .c = col, .l = maxYLen });
+        try writer.print("{[c]d: >[l]} ", .{ .c = col, .l = max_y_len });
         if (indices.items.len == 0) {
             try writer.print("{s}\n", .{line});
             continue;

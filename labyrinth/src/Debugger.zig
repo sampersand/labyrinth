@@ -16,15 +16,15 @@ pub fn init(labyrinth: *Labyrinth) Debugger {
 pub fn run(this: *Debugger) !void {
     const stdout = std.io.getStdOut().writer();
     var stdin = std.io.getStdIn().reader();
-    var lineBuf: [2048]u8 = undefined;
+    var line_buf: [2048]u8 = undefined;
 
     while (true) {
         try stdout.writeAll("> ");
         try std.io.getStdOut().sync();
 
-        const line = stdin.readUntilDelimiter(&lineBuf, '\n') catch |err| switch (err) {
+        const line = stdin.readUntilDelimiter(&line_buf, '\n') catch |err| switch (err) {
             error.StreamTooLong => {
-                try stdout.print("input too large (cap={d})\n", .{@typeInfo(@TypeOf(lineBuf)).Array.len});
+                try stdout.print("input too large (cap={d})\n", .{@typeInfo(@TypeOf(line_buf)).Array.len});
                 continue;
             },
             else => {
@@ -59,12 +59,12 @@ const Command = union(enum) {
     const ArgParser = struct {
         iter: std.mem.TokenIterator(u8),
         ctx: *ParseContext,
-        cmdName: []const u8,
+        cmd_name: []const u8,
 
         fn init(line: []const u8, ctx: *ParseContext) ?ArgParser {
             var iter = std.mem.tokenize(u8, line, &std.ascii.whitespace);
-            const cmdName = iter.next() orelse return null;
-            return .{ .ctx = ctx, .iter = iter, .cmdName = cmdName };
+            const cmd_name = iter.next() orelse return null;
+            return .{ .ctx = ctx, .iter = iter, .cmd_name = cmd_name };
         }
 
         fn next(this: *ArgParser) ?[]const u8 {
@@ -72,7 +72,7 @@ const Command = union(enum) {
         }
 
         fn nextReq(this: *ArgParser) ParseError![]const u8 {
-            return this.next() orelse return this.ctx.fail(error.TooFewArgs, this.cmdName);
+            return this.next() orelse return this.ctx.fail(error.TooFewArgs, this.cmd_name);
         }
 
         fn read(this: *ArgParser, comptime T: type) ParseError!T {
@@ -105,11 +105,11 @@ const Command = union(enum) {
     };
     // zig fmt: on
 
-    dumpAll: void,
-    dumpMinotaur: MinotaurId,
-    jumpTo: struct { id: MinotaurId, position: ?Coordinate = null, velocity: ?Vector = null },
-    stepAll: MinotaurId,
-    stepOne: struct { minotaur: MinotaurId, amount: usize },
+    dump_all: void,
+    dump_minotaur: MinotaurId,
+    jump_to: struct { id: MinotaurId, position: ?Coordinate = null, velocity: ?Vector = null },
+    step_all: MinotaurId,
+    step_one: struct { minotaur: MinotaurId, amount: usize },
     noop: void,
     help: void,
     quit: void,
@@ -118,27 +118,27 @@ const Command = union(enum) {
     fn parse(line: []const u8, ctx: *ParseContext) ParseError!?Command {
         var args = ArgParser.init(line, ctx) orelse return null;
 
-        const cmd = std.meta.stringToEnum(Names, args.cmdName) orelse
-            return ctx.fail(error.UnknownCommandName, args.cmdName);
+        const cmd = std.meta.stringToEnum(Names, args.cmd_name) orelse
+            return ctx.fail(error.UnknownCommandName, args.cmd_name);
 
         return switch (cmd) {
-            .dump, .d => if (args.next()) |arg| .{ .dumpMinotaur = try read(usize, arg, ctx) } else .dumpAll,
+            .dump, .d => if (args.next()) |arg| .{ .dump_minotaur = try read(usize, arg, ctx) } else .dump_all,
             .quit, .q => .quit,
-            .step, .s => .{ .stepAll = try args.readOr(usize, 1) },
-            .stepm, .sm => .{ .stepOne = .{
+            .step, .s => .{ .step_all = try args.readOr(usize, 1) },
+            .stepm, .sm => .{ .step_one = .{
                 .minotaur = try args.read(usize),
                 .amount = try args.readOr(usize, 1),
             } },
-            .jump, .j => .{ .jumpTo = .{
+            .jump, .j => .{ .jump_to = .{
                 .id = try args.read(usize),
                 .position = .{ .x = try args.read(u32), .y = try args.read(u32) },
                 .velocity = .{ .x = try args.read(i32), .y = try args.read(i32) },
             } },
-            .@"set-position" => .{ .jumpTo = .{
+            .@"set-position" => .{ .jump_to = .{
                 .id = try args.read(usize),
                 .position = .{ .x = try args.read(u32), .y = try args.read(u32) },
             } },
-            .@"set-velocity" => .{ .jumpTo = .{
+            .@"set-velocity" => .{ .jump_to = .{
                 .id = try args.read(usize),
                 .velocity = .{ .x = try args.read(i32), .y = try args.read(i32) },
             } },
@@ -150,10 +150,10 @@ const Command = union(enum) {
     pub fn run(this: Command, dbg: *Debugger) !void {
         switch (this) {
             .noop => {},
-            .dumpMinotaur => {},
-            .dumpAll => try utils.println("{}", .{dbg.labyrinth}),
-            .stepOne => {},
-            .stepAll => |amnt| {
+            .dump_minotaur => {},
+            .dump_all => try utils.println("{}", .{dbg.labyrinth}),
+            .step_one => {},
+            .step_all => |amnt| {
                 var n = @as(usize, 0);
                 while (n < amnt) : (n += 1) {
                     try dbg.labyrinth.stepAllMinotaurs();
@@ -168,7 +168,7 @@ const Command = union(enum) {
                 if (info.minotaurs) try dbg.labyrinth.printMinotaurs(stdout);
             },
             .quit => unreachable, // should be handled in minotaur
-            .jumpTo => |j| {
+            .jump_to => |j| {
                 var minotaur = try dbg.labyrinth.getMinotaur(j.id);
                 minotaur.isFirst = false;
                 if (j.position) |p| minotaur.position = p;

@@ -120,17 +120,17 @@ pub fn print(this: *const Array, writer: anytype) Value.PrintError!void {
     }
 }
 
-const testAlloc = std.testing.allocator;
+const test_alloc = std.testing.allocator;
 test "refcount defaults to 1, len starts as 0" {
-    var ary = try Array.init(testAlloc);
-    defer ary.deinitNoCheck(testAlloc);
+    var ary = try Array.init(test_alloc);
+    defer ary.deinitNoCheck(test_alloc);
 
     try std.testing.expectEqual(@as(u32, 1), ary.refcount);
     try std.testing.expectEqual(@as(usize, 0), ary.len());
 }
 
 test "refcount works as expected" {
-    var ary = try Array.init(testAlloc);
+    var ary = try Array.init(test_alloc);
 
     try std.testing.expectEqual(@as(u32, 1), ary.refcount);
     ary.increment();
@@ -142,31 +142,31 @@ test "refcount works as expected" {
     try std.testing.expectEqual(@as(u32, 2), ary.refcount);
     ary.decrement(undefined);
     try std.testing.expectEqual(@as(u32, 1), ary.refcount);
-    ary.decrement(testAlloc);
+    ary.decrement(test_alloc);
 }
 
 test "deinit also deinits elements" {
-    var ary = try Array.initCapacity(testAlloc, 4);
-    var child = try Array.init(testAlloc);
+    var ary = try Array.initCapacity(test_alloc, 4);
+    var child = try Array.init(test_alloc);
     child.increment();
 
     try std.testing.expectEqual(@as(u32, 2), child.refcount);
-    try ary.push(testAlloc, Value.from(child));
-    ary.decrement(testAlloc);
+    try ary.push(test_alloc, Value.from(child));
+    ary.decrement(test_alloc);
     try std.testing.expectEqual(@as(u32, 1), child.refcount);
-    child.decrement(testAlloc);
+    child.decrement(test_alloc);
 }
 
 test "push, pop, and len work" {
-    var ary = try Array.init(testAlloc);
-    defer ary.decrement(testAlloc);
+    var ary = try Array.init(test_alloc);
+    defer ary.decrement(test_alloc);
 
     try std.testing.expectEqual(@as(usize, 0), ary.len());
 
-    try ary.push(testAlloc, Value.from(1));
+    try ary.push(test_alloc, Value.from(1));
     try std.testing.expectEqual(@as(usize, 1), ary.len());
 
-    try ary.push(testAlloc, Value.from(2));
+    try ary.push(test_alloc, Value.from(2));
     try std.testing.expectEqual(@as(usize, 2), ary.len());
 
     try std.testing.expect(ary.pop().?.equals(Value.from(2)));
@@ -179,42 +179,42 @@ test "push, pop, and len work" {
 }
 
 test "arrays are equal" {
-    var ary1 = try Array.init(testAlloc);
-    defer ary1.decrement(testAlloc);
+    var ary1 = try Array.init(test_alloc);
+    defer ary1.decrement(test_alloc);
 
-    var ary2 = try Array.init(testAlloc);
-    defer ary2.decrement(testAlloc);
+    var ary2 = try Array.init(test_alloc);
+    defer ary2.decrement(test_alloc);
 
     try std.testing.expect(ary1.equals(ary1));
     try std.testing.expect(ary1.equals(ary2));
 
-    try ary1.push(testAlloc, Value.from(1));
+    try ary1.push(test_alloc, Value.from(1));
     try std.testing.expect(ary1.equals(ary1));
     try std.testing.expect(!ary1.equals(ary2));
 
-    try ary2.push(testAlloc, Value.from(1));
+    try ary2.push(test_alloc, Value.from(1));
     try std.testing.expect(ary1.equals(ary2));
 }
 
 test "parse int works" {
-    var ary = try Array.init(testAlloc);
-    defer ary.decrement(testAlloc);
+    var ary = try Array.init(test_alloc);
+    defer ary.decrement(test_alloc);
 
     try std.testing.expectEqual(@as(IntType, 0), try ary.parseInt());
 
-    try ary.push(testAlloc, Value.from('-'));
+    try ary.push(test_alloc, Value.from('-'));
     try std.testing.expectEqual(@as(IntType, 0), try ary.parseInt());
-    try ary.push(testAlloc, Value.from('1'));
+    try ary.push(test_alloc, Value.from('1'));
     try std.testing.expectEqual(@as(IntType, -1), try ary.parseInt());
-    try ary.push(testAlloc, Value.from('2'));
+    try ary.push(test_alloc, Value.from('2'));
     try std.testing.expectEqual(@as(IntType, -12), try ary.parseInt());
-    try ary.push(testAlloc, Value.from('a'));
+    try ary.push(test_alloc, Value.from('a'));
     try std.testing.expectEqual(@as(IntType, -12), try ary.parseInt());
 
     _ = ary.pop();
-    var ary2 = try Array.init(testAlloc);
-    defer ary2.decrement(testAlloc);
-    try ary.push(testAlloc, Value.from(ary2));
+    var ary2 = try Array.init(test_alloc);
+    defer ary2.decrement(test_alloc);
+    try ary.push(test_alloc, Value.from(ary2));
 
     try std.testing.expectError(ParseIntError.NotAnArrayOfInts, ary.parseInt());
 }
