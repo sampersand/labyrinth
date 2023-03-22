@@ -42,7 +42,7 @@ pub fn build(b: *std.build.Builder) void {
 
     build_options.addOption(
         usize,
-        "position_count",
-        1 + (b.option(usize, "position_count", "Amnt of extra positions to store") orelse 4),
+        "prev_positions",
+        1 + (b.option(usize, "prev_positions", "Amnt of extra positions to store") orelse 4),
     );
 }

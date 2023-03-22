@@ -171,7 +171,7 @@ const Command = union(enum) {
             .jump_to => |j| {
                 var minotaur = try dbg.labyrinth.getMinotaur(j.id);
                 minotaur.is_first = false;
-                if (j.position) |p| minotaur.position = p;
+                if (j.position) |p| minotaur.jumpTo(p);
                 if (j.velocity) |v| minotaur.velocity = v;
             },
             .help => try utils.println(

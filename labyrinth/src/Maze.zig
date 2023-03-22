@@ -86,18 +86,11 @@ pub fn printMaze(maze: *const Maze, minotaurs: []Minotaur, writer: anytype) std.
         indices.clearRetainingCapacity();
 
         for (minotaurs) |minotaur| {
-            if (minotaur.position.y == col)
-                indices.append(.{
-                    .idx = @intCast(usize, minotaur.position.x),
-                    .age = 0,
-                    .id = minotaur.colour,
-                }) catch unreachable;
-
-            for (minotaur.prev_positions) |pos, i|
+            for (minotaur.positions) |pos, i|
                 if (pos.y == col and pos.x >= 0)
                     indices.append(.{
                         .idx = @intCast(usize, pos.x),
-                        .age = i + 1,
+                        .age = i,
                         .id = minotaur.colour,
                     }) catch unreachable;
         }

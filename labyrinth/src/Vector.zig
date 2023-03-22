@@ -73,11 +73,6 @@ pub fn rotate(this: Vector, dir: Direction) Vector {
     };
 }
 
-// test "coord works" {
-// var coord = Vector.Right;
-// std.debug.assert(coord.rotate(.Right).equals(Vector.Down));
-// }
-
 pub fn format(
     this: Vector,
     comptime _: []const u8,
