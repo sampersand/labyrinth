@@ -4,12 +4,14 @@ const Minotaur = @This();
 const Labyrinth = @import("Labyrinth.zig");
 const Coordinate = @import("Coordinate.zig");
 const Vector = @import("Vector.zig");
-const Value = @import("value.zig").Value;
+const Value = @import("Value.zig");
 const Function = @import("function.zig").Function;
 const IntType = @import("types.zig").IntType;
 const Array = @import("Array.zig");
 const Maze = @import("Maze.zig");
 const utils = @import("utils.zig");
+const build_options = @import("build-options");
+const prev_positions_count = build_options.prev_positions_count;
 
 position: Coordinate = Coordinate.Origin,
 velocity: Vector = Vector.Right,
@@ -258,12 +260,12 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
 
         .rand => return_value = Value.from(labyrinth.rng.random().int(IntType)),
         .randdir => this.velocity = randomVelocity(&labyrinth.rng),
-        .dumpvalnl => try utils.println("{}", .{this.args[0]}),
-        .dumpval => try utils.print("{}", .{this.args[0]}),
+        .dumpvalnl => try utils.println("{d}", .{this.args[0]}),
+        .dumpval => try utils.print("{d}", .{this.args[0]}),
 
         .printnl, .print => {
             var writer = std.io.getStdOut().writer();
-            try this.args[0].print(writer);
+            try writer.print("{s}", .{this.args[0]});
             if (function == .printnl) try writer.writeAll("\n");
         },
 
@@ -294,7 +296,7 @@ fn traverse(this: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayErro
         .ary, .ary_end, .slay1, .slay, .gets, .get, .set => @panic("todo"),
 
         .toi => return_value = Value.from(try this.args[0].toInt()),
-        .tos => return_value = Value.from(try this.args[0].toString(this.allocator)),
+        .tos => return_value = Value.from(try this.args[0].toArray(this.allocator)),
 
         .ord => return_value = try this.args[0].ord(),
         .chr => return_value = try this.args[0].chr(this.allocator),

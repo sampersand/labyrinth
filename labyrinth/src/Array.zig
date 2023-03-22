@@ -1,8 +1,9 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Array = @This();
-const Value = @import("value.zig").Value;
+const Value = @import("Value.zig");
 const IntType = @import("types.zig").IntType;
+const utils = @import("utils.zig");
 
 refcount: u32,
 eles: std.ArrayListUnmanaged(Value),
@@ -118,27 +119,31 @@ pub fn parseInt(ary: *const Array) ParseIntError!IntType {
 
 pub fn format(
     ary: *const Array,
-    comptime _: []const u8,
-    _: std.fmt.FormatOptions,
+    comptime fmt: []const u8,
+    opts: std.fmt.FormatOptions,
     writer: anytype,
 ) std.os.WriteError!void {
-    try writer.writeAll("[");
+    const which = comptime utils.FmtEnum.mustFrom(fmt);
+    switch (which) {
+        .s, .d => for (ary.eles.items) |value, idx| {
+            try value.format(fmt, opts, writer);
+            switch (which) {
+                .s => if (value.classify() == .ary) try writer.writeByte('\n'),
+                .d => if (idx != ary.len() - 1) try writer.writeByte(' '),
+                .any => unreachable,
+            }
+        },
+        .any => {
+            try writer.writeAll("[");
 
-    for (ary.eles.items) |value, idx| {
-        if (idx != 0)
-            try writer.writeAll(", ");
-        try writer.print("{}", .{value});
-    }
+            for (ary.eles.items) |value, idx| {
+                if (idx != 0)
+                    try writer.writeAll(", ");
+                try writer.print("{}", .{value});
+            }
 
-    try writer.writeAll("]");
-}
-
-/// Calls `print` on every element in `ary`, writing a newline if it's an array.
-pub fn print(ary: *const Array, writer: anytype) Value.PrintError!void {
-    for (ary.eles.items) |value| {
-        try value.print(writer);
-        if (value.classify() == .ary)
-            try writer.writeAll("\n");
+            try writer.writeAll("]");
+        },
     }
 }
 

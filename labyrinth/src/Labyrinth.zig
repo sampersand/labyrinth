@@ -19,7 +19,7 @@ generation: usize = 0,
 rng: std.rand.DefaultPrng,
 
 pub const Options = struct {
-    print_maze: bool = true,
+    print_maze: bool = false,
     print_minotaurs: bool = false,
     wait_for_user_input: bool = false,
     debug: bool = false,

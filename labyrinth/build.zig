@@ -39,4 +39,10 @@ pub fn build(b: *std.build.Builder) void {
         "max_velocity",
         b.option(usize, "max-velocity", "Maximum Velocity") orelse 0,
     );
+
+    build_options.addOption(
+        usize,
+        "position_count",
+        1 + (b.option(usize, "position_count", "Amnt of extra positions to store") orelse 4),
+    );
 }

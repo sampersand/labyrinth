@@ -1,6 +1,19 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+pub const FmtEnum = enum {
+    s,
+    d,
+    any,
+
+    pub fn mustFrom(comptime fmt: []const u8) FmtEnum {
+        return comptime if (fmt.len == 0)
+            .any
+        else
+            std.meta.stringToEnum(FmtEnum, fmt) orelse @compileError("unsupported format option: " ++ fmt);
+    }
+};
+
 pub fn clearScreen(writer: anytype) std.os.WriteError!void {
     try writer.writeAll("\x1B[1;1H\x1B[2J");
 }
