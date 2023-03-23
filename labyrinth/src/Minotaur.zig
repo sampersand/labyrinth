@@ -295,8 +295,12 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         .randdir => minotaur.velocity = randomVelocity(&labyrinth.rng),
 
         // Conditional Movement.
-        .ifl => if (!minotaur.args[0].isTruthy()) minotaur.velocity = minotaur.velocity.rotate(.left),
-        .ifr => if (!minotaur.args[0].isTruthy()) minotaur.velocity = minotaur.velocity.rotate(.right),
+        .ifl => if (!minotaur.args[0].isTruthy()) {
+            minotaur.velocity = minotaur.velocity.rotate(.left);
+        },
+        .ifr => if (!minotaur.args[0].isTruthy()) {
+            minotaur.velocity = minotaur.velocity.rotate(.right);
+        },
         .ifjump1 => if (!minotaur.args[0].isTruthy()) try minotaur.advance(),
         .ifjump => if (!minotaur.args[0].isTruthy()) try minotaur.jumpn(minotaur.args[1]),
         .unlessjump1 => if (minotaur.args[0].isTruthy()) try minotaur.advance(),
