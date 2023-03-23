@@ -1,6 +1,10 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+pub inline fn unlikely(b: bool) bool {
+    return b;
+}
+
 pub const FmtEnum = enum {
     s,
     d,

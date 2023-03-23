@@ -11,11 +11,12 @@ pub const MinotaurId = usize;
 
 maze: Maze,
 options: Options = .{},
-minotaurs: std.ArrayListUnmanaged(Minotaur),
-minotaurs_to_spawn: std.ArrayListUnmanaged(Minotaur),
+minotaurs: std.ArrayListUnmanaged(*Minotaur),
 allocator: Allocator,
 exit_status: ?u8 = null,
 generation: usize = 0,
+stdout: std.fs.File,
+spawned_count: usize = 0,
 rng: std.rand.DefaultPrng,
 
 pub const Options = struct {
@@ -27,11 +28,8 @@ pub const Options = struct {
 };
 
 pub fn init(alloc: Allocator, maze: Maze, options: Options) Allocator.Error!Labyrinth {
-    var minotaurs = try std.ArrayListUnmanaged(Minotaur).initCapacity(alloc, 8);
+    var minotaurs = try std.ArrayListUnmanaged(*Minotaur).initCapacity(alloc, 8);
     errdefer minotaurs.deinit(alloc);
-
-    var minotaurs_to_spawn = try std.ArrayListUnmanaged(Minotaur).initCapacity(alloc, 4);
-    errdefer minotaurs_to_spawn.deinit(alloc);
 
     var minotaur = try Minotaur.initCapacity(alloc, 8);
     minotaur.is_first = true;
@@ -43,7 +41,7 @@ pub fn init(alloc: Allocator, maze: Maze, options: Options) Allocator.Error!Laby
         .allocator = alloc,
         .minotaurs = minotaurs,
         .options = options,
-        .minotaurs_to_spawn = minotaurs_to_spawn,
+        .stdout = std.io.getStdOut(),
         .rng = std.rand.DefaultPrng.init(@intCast(u64, std.time.milliTimestamp())),
     };
 }
@@ -51,13 +49,10 @@ pub fn init(alloc: Allocator, maze: Maze, options: Options) Allocator.Error!Laby
 pub fn deinit(labyrinth: *Labyrinth) void {
     labyrinth.maze.deinit(labyrinth.allocator);
 
-    for (labyrinth.minotaurs.items) |*minotaur|
+    for (labyrinth.minotaurs.items) |minotaur|
         minotaur.deinit();
-    labyrinth.minotaurs.deinit(labyrinth.allocator);
 
-    for (labyrinth.minotaurs_to_spawn.items) |*minotaur|
-        minotaur.deinit();
-    labyrinth.minotaurs_to_spawn.deinit(labyrinth.allocator);
+    labyrinth.minotaurs.deinit(labyrinth.allocator);
 }
 
 pub fn format(
@@ -81,8 +76,9 @@ pub fn format(
     try writer.writeAll("])");
 }
 
-pub fn spawnMinotaur(this: *Labyrinth, minotaur: Minotaur) Allocator.Error!void {
-    try this.minotaurs_to_spawn.append(this.allocator, minotaur);
+pub fn spawnMinotaur(this: *Labyrinth, minotaur: *Minotaur) Allocator.Error!void {
+    try this.minotaurs.append(this.allocator, minotaur);
+    this.spawned_count += 1;
 }
 
 pub fn slayMinotaur(this: *Labyrinth, id: MinotaurId) MinotaurGetError!void {
@@ -97,7 +93,7 @@ pub fn slayMinotaur(this: *Labyrinth, id: MinotaurId) MinotaurGetError!void {
 pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!void {
     std.time.sleep(this.options.sleep_ms * 1_000_000);
     try utils.clearScreen(writer);
-    try writer.print("step {d}\n", .{this.generation});
+    try writer.print("tick {d}\n", .{this.generation});
     try this.maze.printMaze(this.minotaurs.items, writer);
 
     if (this.options.print_minotaurs) {
@@ -108,9 +104,8 @@ pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!voi
 }
 
 fn addNewMinotaurs(this: *Labyrinth) Allocator.Error!bool {
-    try this.minotaurs.appendSlice(this.allocator, this.minotaurs_to_spawn.items);
-    defer this.minotaurs_to_spawn.clearRetainingCapacity();
-    return this.minotaurs_to_spawn.items.len != 0;
+    defer this.spawned_count = 0;
+    return this.spawned_count != 0;
 }
 
 fn debugPrintMaze(this: *const Labyrinth) !void {
@@ -135,55 +130,55 @@ pub fn isDone(this: *const Labyrinth) bool {
 pub const MinotaurGetError = error{MinotaurDoesntExist};
 pub fn getMinotaur(this: *Labyrinth, id: MinotaurId) MinotaurGetError!*Minotaur {
     if (this.minotaurs.items.len <= id) return error.MinotaurDoesntExist;
-    return &this.minotaurs.items[id];
+    return this.minotaurs.items[id];
 }
 
 // returns whether the minotaur is still alive.
-pub const StepResult = enum { Slayed, Spawned, Alive };
-pub fn stepMinotaur(this: *Labyrinth, id: MinotaurId) !StepResult {
+pub const TickResult = enum { slayed, spawned, alive };
+pub fn tickMinotaur(this: *Labyrinth, id: MinotaurId) !TickResult {
     var minotaur = try this.getMinotaur(id);
-    try minotaur.step(this);
+    try minotaur.tick(this);
 
     if (!minotaur.hasExited()) {
-        return if (try this.addNewMinotaurs()) .Spawned else .Alive;
+        return if (try this.addNewMinotaurs()) .spawned else .alive;
     }
 
     this.slayMinotaur(id) catch unreachable; // we already validated it earlier.
     const new_spawned = try this.addNewMinotaurs();
     assert(!new_spawned); // we dont (currently) spawn minotaurs at the same time we slay them.
-    return .Slayed;
+    return .slayed;
 }
 
 pub fn stepAllMinotaurs(this: *Labyrinth) !void {
-    var minotaur_di: usize = 0;
+    var minotaur_id: usize = 0;
     var amnt_to_step = this.minotaurs.items.len;
     var amnt_of_spawned_minotaurs: usize = 0;
 
     this.generation += 1;
-    // We have to be careful to not step new minotaurs that have been added by previous minotaurs
+    // We have to be careful to not tick new minotaurs that have been added by previous minotaurs
     // during this stepping process. Since Labyrinth makes no gaurantees about the execution order
     // of minotaurs, we slay minotaurs by replacing them with the lastmost in the list (so we dont
     // have to shift everything over each time). However, this means that we might have swapped
     // a new minotaur over. We make sure we don't do this by keeping track of how many new minotaurs
-    // have spawned: If at least one is around, then we skip it and step the next one.
-    while (minotaur_di < amnt_to_step) {
-        switch (try this.stepMinotaur(minotaur_di)) {
+    // have spawned: If at least one is around, then we skip it and tick the next one.
+    while (minotaur_id < amnt_to_step) {
+        switch (try this.tickMinotaur(minotaur_id)) {
             // If the minotaur is still alive, then just advance.
-            .Alive => minotaur_di += 1,
+            .alive => minotaur_id += 1,
 
             // A new one was spawned, so we advance and incrmement the spawned count.
-            .Spawned => {
-                minotaur_di += 1;
+            .spawned => {
+                minotaur_id += 1;
                 amnt_of_spawned_minotaurs += 1;
             },
 
             // The slain minotaur has been swapped with the last minotaur. So if that's
             // a new minotaur, we skip over it, and decrement the amount of new minotaurs.
-            .Slayed => if (amnt_of_spawned_minotaurs == 0) {
+            .slayed => if (amnt_of_spawned_minotaurs == 0) {
                 amnt_to_step -= 1;
             } else {
                 // otherwise, we just swapped in a new minotaur, so we decrement the spawned count.
-                minotaur_di += 1;
+                minotaur_id += 1;
                 amnt_of_spawned_minotaurs -= 1;
             },
         }
