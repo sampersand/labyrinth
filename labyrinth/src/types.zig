@@ -8,10 +8,10 @@ pub const IntType = i63;
 pub fn toArray(int: IntType, alloc: Allocator) Allocator.Error!*Array {
     var buf: [255]u8 = undefined; // 255 is plenty.
     const bytes = std.fmt.bufPrint(&buf, "{d}", .{int}) catch unreachable;
-    var ary = try Array.initCapacity(alloc, bytes.len);
+    var ary = Array.empty;
 
     for (bytes) |byte|
-        ary.push(alloc, Value.from(@intCast(IntType, byte))) catch unreachable;
+        ary = try ary.consNoIncrement(alloc, Value.from(@intCast(IntType, byte)));
 
     return ary;
 }

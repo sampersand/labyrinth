@@ -1,3 +1,4 @@
+100------------v
 C!--100--$--t--v   if no argument is given on the stack,
                |   then default to doing fizzbuzz up to 100.
 v--------------<

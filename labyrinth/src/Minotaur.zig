@@ -178,13 +178,14 @@ pub fn tick(minotaur: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
     const byte = try labyrinth.maze.get(minotaur.positions[0]);
 
     switch (minotaur.mode) {
-        .string => |ary| {
+        .string => |*ary| {
             // If it's not the end quote, then just push it to the end.
             if (byte != comptime Function.str.toByte()) {
-                try ary.push(minotaur.allocator, Value.from(@intCast(IntType, byte)));
+                ary.* = try ary.*.consNoIncrement(minotaur.allocator, Value.from(@intCast(IntType, byte)));
             } else {
                 // It's the closing quote, then push it onto the list of chars and return.
-                try minotaur.push(Value.from(ary));
+                try minotaur.push(Value.from(try ary.*.reverse(minotaur.allocator)));
+                ary.*.decrement(minotaur.allocator);
                 minotaur.mode = .normal;
             }
 
@@ -257,7 +258,7 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         .int0, .int1, .int2, .int3, .int4, .int5, .int6, .int7, .int8, .int9 => minotaur.mode = .{
             .integer = std.fmt.charToDigit(function.toByte(), 10) catch unreachable,
         },
-        .str => minotaur.mode = .{ .string = try Array.init(minotaur.allocator) },
+        .str => minotaur.mode = .{ .string = Array.empty },
 
         .dup1 => ret = try minotaur.dup(0),
         .dup2 => ret = try minotaur.dup(1),

@@ -60,10 +60,10 @@ pub fn deinit(value: Value, alloc: Allocator) void {
 pub fn isTruthy(value: Value) bool {
     return switch (value.classify()) {
         .int => |int| int != 0,
-        .ary => |ary| switch (ary.eles.items.len) {
-            0 => false,
-            1 => ary.eles.items[0].isTruthy(), // `[0]` is falsey.
-            else => true,
+        .ary => |ary| {
+            var iter = ary.iter();
+            const item = iter.next() orelse return false;
+            return if (item.equals(comptime Value.from(0))) iter.next() != null else true;
         },
     };
 }
@@ -138,26 +138,31 @@ fn mapIt(
         .int => |l| switch (rhs.classify()) {
             .int => |r| return Value.from(func(l, r)),
             .ary => |a| {
-                var ary = try Array.initCapacity(alloc, a.len());
-                for (a.eles.items) |item|
-                    ary.push(alloc, try value.mapIt(alloc, item, func)) catch unreachable;
+                var ary = Array.empty;
+                var iter = a.iter();
+                while (iter.next()) |item|
+                    ary = try ary.consNoIncrement(alloc, try value.mapIt(alloc, item, func));
                 return Value.from(ary);
             },
         },
         .ary => |a| switch (rhs.classify()) {
             .int => {
-                var ary = try Array.initCapacity(alloc, a.len());
-                for (a.eles.items) |item|
-                    ary.push(alloc, try item.mapIt(alloc, rhs, func)) catch unreachable;
+                var ary = Array.empty;
+                var iter = a.iter();
+                while (iter.next()) |item|
+                    ary = try ary.consNoIncrement(alloc, try item.mapIt(alloc, rhs, func));
                 return Value.from(ary);
             },
             .ary => |r| {
-                if (a.len() != r.len()) return error.ArrayLengthMismatch;
-                var ary = try Array.initCapacity(alloc, a.len());
+                var ary = Array.empty;
+                var liter = a.iter();
+                var riter = r.iter();
+                while (liter.next()) |left| {
+                    const right = riter.next() orelse return error.ArrayLengthMismatch;
+                    ary = try ary.consNoIncrement(alloc, try left.mapIt(alloc, right, func));
+                }
 
-                for (a.eles.items) |lvalue, i|
-                    ary.push(alloc, try lvalue.mapIt(alloc, r.eles.items[i], func)) catch unreachable;
-                return Value.from(ary);
+                return if (riter.next() == null) Value.from(ary) else error.ArrayLengthMismatch;
             },
         },
     }
@@ -239,11 +244,7 @@ pub fn cmp(value: Value, rhs: Value) IntType {
 
 pub fn chr(value: Value, alloc: Allocator) Allocator.Error!Value {
     switch (value.classify()) {
-        .int => {
-            var ary = try Array.initCapacity(alloc, 1);
-            ary.push(alloc, value) catch unreachable;
-            return Value.from(ary);
-        },
+        .int => return Value.from(try Array.init(alloc, value)),
         .ary => |ary| {
             ary.increment();
             return value;
@@ -255,6 +256,9 @@ pub const OrdError = error{EmptyString};
 pub fn ord(value: Value) OrdError!Value {
     return switch (value.classify()) {
         .int => value,
-        .ary => |ary| if (ary.len() == 0) error.EmptyString else ary.eles.items[0].ord(),
+        .ary => |ary| b: {
+            var iter = ary.iter();
+            break :b if (iter.next()) |ele| ele.ord() else error.EmptyString;
+        },
     };
 }
