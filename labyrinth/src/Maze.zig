@@ -62,7 +62,7 @@ fn printXHeadings(writer: anytype, max_x: usize, max_y_len: usize) std.os.WriteE
     }
 }
 
-pub fn printMaze(maze: *const Maze, minotaurs: []Minotaur, writer: anytype) std.os.WriteError!void {
+pub fn printMaze(maze: *const Maze, minotaurs: []*Minotaur, writer: anytype) std.os.WriteError!void {
     const Cursor = struct {
         idx: usize,
         id: usize,

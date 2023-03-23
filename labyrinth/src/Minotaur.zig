@@ -23,31 +23,65 @@ positions: [positions_count]Coordinate = .{Coordinate.Origin} ** positions_count
 // We keep arguments here so we can check them in the debugger.
 args: [Function.MaxArgc]Value = undefined,
 mode: union(enum) { normal, integer: IntType, string: *Array } = .normal,
-steps_ahead: usize = 0,
+sleep_duration: usize = 0,
 is_first: bool = false,
 colour: u8 = 0,
 exit_status: ?u8 = null,
 
 /// Creates a new `Minotaur` with the given starting stack capacity.
-pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!Minotaur {
-    return .{
+pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!*Minotaur {
+    var minotaur = try alloc.create(Minotaur);
+    errdefer alloc.destroy(minotaur);
+
+    minotaur.* = .{
         .stack = try std.ArrayListUnmanaged(Value).initCapacity(alloc, cap),
         .allocator = alloc,
     };
+
+    return minotaur;
 }
 
 /// Deinitializes the minotaur and all associated items.
 pub fn deinit(minotaur: *Minotaur) void {
-    for (minotaur.stack.items) |item|
-        item.deinit(minotaur.allocator);
-    minotaur.stack.deinit(minotaur.allocator);
-
     switch (minotaur.mode) {
         .string => |ary| ary.deinit(minotaur.allocator),
         else => {},
     }
+
+    for (minotaur.stack.items) |item|
+        item.deinit(minotaur.allocator);
+    minotaur.stack.deinit(minotaur.allocator);
+
+    minotaur.allocator.destroy(minotaur);
 }
 
+pub fn clone(minotaur: *const Minotaur) Allocator.Error!*Minotaur {
+    var new = try Minotaur.initCapacity(minotaur.allocator, minotaur.stack.items.len);
+
+    for (minotaur.stack.items) |value|
+        new.push(value.clone()) catch unreachable; // we ensured we had enough capacity.
+
+    new.positions = minotaur.positions;
+    new.velocity = minotaur.velocity;
+    new.colour = minotaur.colour +% 1;
+
+    new.mode = minotaur.mode;
+    new.sleep_duration = minotaur.sleep_duration;
+    new.is_first = minotaur.is_first;
+    new.exit_status = minotaur.exit_status;
+    new.args = minotaur.args;
+
+    return new;
+}
+
+/// The same as `Minotaur.clone`, except it also rotates in the given direction.
+pub fn cloneRotate(minotaur: *const Minotaur, dir: Vector.Direction) Allocator.Error!*Minotaur {
+    var copy = try minotaur.clone();
+    copy.velocity = copy.velocity.rotate(dir);
+    return copy;
+}
+
+/// Returns whether the minotaur has exited yet.
 pub inline fn hasExited(minotaur: *const Minotaur) bool {
     return minotaur.exit_status != null;
 }
@@ -65,7 +99,6 @@ pub fn jumpTo(minotaur: *Minotaur, new: Coordinate) void {
 /// Moves the minotaur forward by `minotaur.velocity` steps.
 pub fn advance(minotaur: *Minotaur) Coordinate.MoveError!void {
     std.debug.assert(!minotaur.hasExited());
-
     minotaur.jumpTo(try minotaur.positions[0].moveBy(minotaur.velocity));
 }
 
@@ -76,6 +109,7 @@ inline fn offset(minotaur: *const Minotaur, fromEnd: usize) StackError!usize {
     if (minotaur.stack.items.len <= fromEnd) return error.StackTooSmall;
     return minotaur.stack.items.len - fromEnd - 1;
 }
+
 /// Pushes `value` onto the end of the stack.
 pub fn push(minotaur: *Minotaur, value: Value) Allocator.Error!void {
     try minotaur.stack.append(minotaur.allocator, value);
@@ -116,69 +150,67 @@ pub fn format(
     try writer.writeAll("]}");
 }
 
-pub fn clone(minotaur: *const Minotaur) Allocator.Error!Minotaur {
-    var new = try Minotaur.initCapacity(minotaur.allocator, minotaur.stack.items.len);
+//
+const PlayError = error{
+    TooFewArgumentsForFunction,
+    IntOutOfBounds,
+    IntLiteralOverflow,
+} || Maze.GetError || StackError || std.os.WriteError || Allocator.Error ||
+    Array.ParseIntError || Function.ValidateError || Value.OrdError || Value.MathError ||
+    Coordinate.MoveError;
 
-    for (minotaur.stack.items) |value|
-        new.push(value.clone()) catch unreachable; // we ensured we had enough capacity.
-
-    new.positions = minotaur.positions;
-    new.velocity = minotaur.velocity;
-    new.colour = minotaur.colour +% 1;
-    new.mode = minotaur.mode;
-    new.steps_ahead = minotaur.steps_ahead;
-    new.is_first = minotaur.is_first;
-    new.colour = minotaur.colour;
-    new.exit_status = minotaur.exit_status;
-    // No need to copy `args` over.
-
-    return new;
-}
-
-/// The same as `Minotaur.clone`, except it also rotates in the given direction.
-pub fn cloneRotate(minotaur: *const Minotaur, dir: Vector.Direction) Allocator.Error!Minotaur {
-    var copy = try minotaur.clone();
-    copy.velocity = copy.velocity.rotate(dir);
-    return copy;
-}
-
-pub fn step(minotaur: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
-    if (minotaur.steps_ahead != 0) {
-        minotaur.steps_ahead -= 1;
+pub fn tick(minotaur: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
+    // If we're currently sleeping, then continue sleeping.
+    if (utils.unlikely(minotaur.sleep_duration != 0)) {
+        minotaur.sleep_duration -= 1;
         return;
     }
 
-    if (minotaur.is_first) {
+    // If it's the very first time any minotaur in the entire program has moved,
+    // then don't actually move. This is so we don't skip the first step.
+    if (utils.unlikely(minotaur.is_first)) {
         minotaur.is_first = false;
-    } else try minotaur.advance();
+    } else {
+        try minotaur.advance();
+    }
+
+    // Get the byte we're looking at.
     const byte = try labyrinth.maze.get(minotaur.positions[0]);
 
     switch (minotaur.mode) {
-        .normal => {},
-        .integer => |*int| {
-            if (parseDigit(byte)) |digit| {
-                int.* = 10 * int.* + digit;
-                return;
-            }
-
-            try minotaur.push(Value.from(int.*));
-            minotaur.mode = .normal;
-        },
         .string => |ary| {
+            // If it's not the end quote, then just push it to the end.
             if (byte != comptime Function.str.toByte()) {
                 try ary.push(minotaur.allocator, Value.from(@intCast(IntType, byte)));
             } else {
+                // It's the closing quote, then push it onto the list of chars and return.
                 try minotaur.push(Value.from(ary));
                 minotaur.mode = .normal;
             }
 
             return;
         },
+
+        .integer => |*int| {
+            // If it's another digit, continue adding it to the integer.
+            if (std.fmt.charToDigit(byte, 10) catch null) |digit| {
+                int.* = std.math.add(
+                    IntType,
+                    std.math.mul(IntType, 10, int.*) catch return error.IntLiteralOverflow,
+                    digit,
+                ) catch return error.IntLiteralOverflow;
+                return;
+            }
+
+            // It's not a digit, so instead add our int to the list of ints and execute what we
+            // just saw.
+            try minotaur.push(Value.from(int.*));
+            minotaur.mode = .normal;
+        },
+        .normal => {},
     }
 
-    return minotaur.traverse(labyrinth, Function.fromByte(byte) catch |err| {
-        return std.log.err("error: {}", .{err});
-    });
+    try minotaur.tickFunction(labyrinth, try Function.fromByte(byte));
 }
 
 fn setArguments(minotaur: *Minotaur, arity: usize) PlayError!void {
@@ -192,19 +224,6 @@ fn setArguments(minotaur: *Minotaur, arity: usize) PlayError!void {
 fn deinitArgs(minotaur: *Minotaur, arity: usize) void {
     for (minotaur.args[0..arity]) |arg|
         arg.deinit(minotaur.allocator);
-}
-
-const PlayError = error{
-    TooFewArgumentsForFunction,
-    IntOutOfBounds,
-    StackTooSmall,
-    StackTooLarge,
-} || Maze.GetError || std.os.WriteError || Allocator.Error ||
-    Array.ParseIntError || Function.ValidateError || Value.OrdError || Value.MathError ||
-    Coordinate.MoveError;
-
-fn parseDigit(byte: u8) ?IntType {
-    return if ('0' <= byte and byte <= '9') @as(IntType, byte - '0') else null;
 }
 
 fn castInt(comptime T: type, int: IntType) PlayError!T {
@@ -227,33 +246,44 @@ fn randomVelocity(rng: *std.rand.DefaultPrng) Vector {
     };
 }
 
-fn traverse(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayError!void {
-    std.debug.assert(minotaur.steps_ahead == 0);
+fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayError!void {
+    std.debug.assert(minotaur.sleep_duration == 0);
 
     try minotaur.setArguments(function.arity());
     defer minotaur.deinitArgs(function.arity());
-    var return_value: ?Value = null;
+    var ret: ?Value = null;
 
     switch (function) {
         .int0, .int1, .int2, .int3, .int4, .int5, .int6, .int7, .int8, .int9 => minotaur.mode = .{
-            .integer = parseDigit(function.toByte()) orelse unreachable,
+            .integer = std.fmt.charToDigit(function.toByte(), 10) catch unreachable,
         },
         .str => minotaur.mode = .{ .string = try Array.init(minotaur.allocator) },
-        .dumpq, .dump => {
-            try utils.println("{any}", .{labyrinth});
-            if (function == .dumpq) minotaur.exit_status = 0;
-        },
-        .quit0 => minotaur.exit_status = 0,
-        .quit => minotaur.exit_status = try castInt(u8, try minotaur.args[0].toInt()),
 
+        .dup1 => ret = try minotaur.dup(0),
+        .dup2 => ret = try minotaur.dup(1),
+        .dup => ret = try minotaur.dup(try castInt(usize, try minotaur.args[0].toInt())),
+        .pop1 => {}, // already handled by taking one argument.
+        .pop2 => _ = try minotaur.pop(1),
+        .pop => _ = try minotaur.pop(try castInt(usize, try minotaur.args[0].toInt())),
+        .swap => ret = try minotaur.pop(1),
+        .stacklen => ret = Value.from(
+            // on no computer I know if can this actually occur
+            std.math.cast(IntType, minotaur.stack.items.len) orelse @panic("this should never happen"),
+        ),
+        .ifpop => _ = try minotaur.pop(if (minotaur.args[0].isTruthy()) 1 else 0),
+
+        // Minotaur functions
         .moveh, .movev => {
-            const perpendicular = 0 != if (function == .moveh) minotaur.velocity.x else minotaur.velocity.y;
-            if (!perpendicular) {
-                // TODO: when `@cold` comes out make the `!perpendicular` branch cold.
+            const perp = 0 != if (function == .moveh) minotaur.velocity.x else minotaur.velocity.y;
+            if (utils.unlikely(!perp)) {
                 try labyrinth.spawnMinotaur(try minotaur.cloneRotate(.left));
                 minotaur.velocity = minotaur.velocity.rotate(.right);
             }
         },
+        .spawnl => try labyrinth.spawnMinotaur(try minotaur.cloneRotate(.left)),
+        .spawnr => try labyrinth.spawnMinotaur(try minotaur.cloneRotate(.right)),
+
+        // Movement
         .left => minotaur.velocity = Vector.Left,
         .right => minotaur.velocity = Vector.Right,
         .up => minotaur.velocity = Vector.Up,
@@ -262,72 +292,64 @@ fn traverse(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) Play
         .slowdown => minotaur.velocity = minotaur.velocity.slowDown(),
         .jump1 => try minotaur.advance(),
         .jump => try minotaur.jumpn(minotaur.args[0]),
-        .dup1 => return_value = try minotaur.dup(1),
-        .dup2 => return_value = try minotaur.dup(2),
-        .dup => return_value = try minotaur.dup(try castInt(usize, try minotaur.args[0].toInt())),
-        .pop1 => {},
-        .pop2 => _ = try minotaur.pop(2),
-        .pop => _ = try minotaur.pop(try castInt(usize, try minotaur.args[0].toInt())),
-        .swap => return_value = try minotaur.pop(2),
-        .stacklen => return_value = Value.from(
-            std.math.cast(IntType, minotaur.stack.items.len) orelse return error.StackTooLarge,
-        ),
-
-        .ifr, .ifl => if (!minotaur.args[0].isTruthy()) {
-            minotaur.velocity = minotaur.velocity.rotate(if (function == .ifl) .left else .right);
-        },
-        .ifpop => _ = try minotaur.pop(if (minotaur.args[0].isTruthy()) 2 else 1),
-        .unlessjump1 => if (!minotaur.args[0].isTruthy()) try minotaur.advance(),
-        .unlessjump => if (!minotaur.args[0].isTruthy()) try minotaur.jumpn(minotaur.args[1]),
-        .ifjump1 => if (minotaur.args[0].isTruthy()) try minotaur.advance(),
-        .ifjump => if (minotaur.args[0].isTruthy()) try minotaur.jumpn(minotaur.args[1]),
-
-        .rand => return_value = Value.from(labyrinth.rng.random().int(IntType)),
         .randdir => minotaur.velocity = randomVelocity(&labyrinth.rng),
-        .dumpvalnl => try utils.println("{d}", .{minotaur.args[0]}),
-        .dumpval => try utils.print("{d}", .{minotaur.args[0]}),
 
-        .printnl, .print => {
-            var writer = std.io.getStdOut().writer();
-            try writer.print("{s}", .{minotaur.args[0]});
-            if (function == .printnl) try writer.writeAll("\n");
-        },
+        // Conditional Movement.
+        .ifl => if (!minotaur.args[0].isTruthy()) minotaur.velocity = minotaur.velocity.rotate(.left),
+        .ifr => if (!minotaur.args[0].isTruthy()) minotaur.velocity = minotaur.velocity.rotate(.right),
+        .ifjump1 => if (!minotaur.args[0].isTruthy()) try minotaur.advance(),
+        .ifjump => if (!minotaur.args[0].isTruthy()) try minotaur.jumpn(minotaur.args[1]),
+        .unlessjump1 => if (minotaur.args[0].isTruthy()) try minotaur.advance(),
+        .unlessjump => if (minotaur.args[0].isTruthy()) try minotaur.jumpn(minotaur.args[1]),
 
+        // Misc
+        .sleep1 => minotaur.sleep_duration = 1,
+        .sleep => minotaur.sleep_duration = try castInt(usize, try minotaur.args[0].toInt()),
         .inccolour => minotaur.colour +%= 1,
         .setcolour => minotaur.colour = @bitCast(u8, @truncate(i8, try minotaur.args[0].toInt())),
 
-        .sleep1 => minotaur.steps_ahead = 1,
-        .sleep => minotaur.steps_ahead = try castInt(usize, try minotaur.args[0].toInt()),
+        // Math
+        .neg => ret = try minotaur.args[0].mul(minotaur.allocator, Value.from(-1)),
+        .inc => ret = try minotaur.args[0].add(minotaur.allocator, Value.from(1)),
+        .dec => ret = try minotaur.args[0].sub(minotaur.allocator, Value.from(1)),
+        .add => ret = try minotaur.args[1].add(minotaur.allocator, minotaur.args[0]),
+        .sub => ret = try minotaur.args[1].sub(minotaur.allocator, minotaur.args[0]),
+        .mul => ret = try minotaur.args[1].mul(minotaur.allocator, minotaur.args[0]),
+        .div => ret = try minotaur.args[1].div(minotaur.allocator, minotaur.args[0]),
+        .mod => ret = try minotaur.args[1].mod(minotaur.allocator, minotaur.args[0]),
+        .rand => ret = Value.from(labyrinth.rng.random().int(IntType)),
 
-        .spawnl => try labyrinth.spawnMinotaur(try minotaur.cloneRotate(.left)),
-        .spawnr => try labyrinth.spawnMinotaur(try minotaur.cloneRotate(.right)),
+        // Logic
+        .not => ret = Value.from(!minotaur.args[0].isTruthy()),
+        .eql => ret = Value.from(minotaur.args[1].equals(minotaur.args[0])),
+        .lth => ret = Value.from(minotaur.args[1].cmp(minotaur.args[0]) < 0),
+        .gth => ret = Value.from(minotaur.args[1].cmp(minotaur.args[0]) > 0),
+        .cmp => ret = Value.from(minotaur.args[1].cmp(minotaur.args[0])),
 
-        .inc => return_value = try minotaur.args[0].add(minotaur.allocator, Value.from(1)),
-        .dec => return_value = try minotaur.args[0].sub(minotaur.allocator, Value.from(1)),
-        .add => return_value = try minotaur.args[1].add(minotaur.allocator, minotaur.args[0]),
-        .sub => return_value = try minotaur.args[1].sub(minotaur.allocator, minotaur.args[0]),
-        .mul => return_value = try minotaur.args[1].mul(minotaur.allocator, minotaur.args[0]),
-        .div => return_value = try minotaur.args[1].div(minotaur.allocator, minotaur.args[0]),
-        .mod => return_value = try minotaur.args[1].mod(minotaur.allocator, minotaur.args[0]),
-        .neg => return_value = try minotaur.args[0].mul(minotaur.allocator, Value.from(-1)),
-
-        .not => return_value = Value.from(!minotaur.args[0].isTruthy()),
-        .eql => return_value = Value.from(minotaur.args[1].equals(minotaur.args[0])),
-        .lth => return_value = Value.from(minotaur.args[1].cmp(minotaur.args[0]) < 0),
-        .gth => return_value = Value.from(minotaur.args[1].cmp(minotaur.args[0]) > 0),
-        .cmp => return_value = Value.from(minotaur.args[1].cmp(minotaur.args[0])),
-
-        .ary, .ary_end, .slay1, .slay, .gets, .get, .set => @panic("todo"),
-
-        .toi => return_value = Value.from(try minotaur.args[0].toInt()),
-        .tos => return_value = Value.from(try minotaur.args[0].toArray(minotaur.allocator)),
-
-        .ord => return_value = try minotaur.args[0].ord(),
-        .chr => return_value = try minotaur.args[0].chr(minotaur.allocator),
-        .len => return_value = Value.from(
+        // Integer & Array functions
+        .ord => ret = try minotaur.args[0].ord(),
+        .chr => ret = try minotaur.args[0].chr(minotaur.allocator),
+        .len => ret = Value.from(
             std.math.cast(IntType, minotaur.args[0].len()) orelse return error.IntOutOfBounds,
         ),
+        .toi => ret = Value.from(try minotaur.args[0].toInt()),
+        .tos => ret = Value.from(try minotaur.args[0].toArray(minotaur.allocator)),
+
+        // io
+        .print => try labyrinth.stdout.writer().print("{s}", .{minotaur.args[0]}),
+        .printnl => try labyrinth.stdout.writer().print("{s}\n", .{minotaur.args[0]}),
+        .dumpval => try labyrinth.stdout.writer().print("{d}", .{minotaur.args[0]}),
+        .dumpvalnl => try labyrinth.stdout.writer().print("{d}\n", .{minotaur.args[0]}),
+        .dumpq, .dump => {
+            try labyrinth.stdout.writer().print("{}", .{labyrinth});
+            if (function == .dumpq) minotaur.exit_status = 0;
+        },
+        .quit0 => minotaur.exit_status = 0,
+        .quit => minotaur.exit_status = try castInt(u8, try minotaur.args[0].toInt()),
+
+        // to implement:
+        .ary, .ary_end, .slay1, .slay, .gets, .get, .set => @panic("todo"),
     }
 
-    if (return_value) |value| try minotaur.push(value);
+    if (ret) |value| try minotaur.push(value);
 }

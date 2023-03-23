@@ -19,10 +19,10 @@ pub const Function = enum(u8) {
     ary_end = ']',
 
     // Stack manipulation & Querying
-    dup      = '#', // Duplicate the nth element, where n is the (popped) topmost element.
+    dup      = '@', // Duplicate the nth element, where n is the (popped) topmost element.
     dup1     = '.', // Duplicate top element of the stack
     dup2     = ':', // Duplicate the 2nd topmost element of the stack.
-    pop      = '@', // Pop the nth element, where n is the (popped) topmost element.
+    pop      = '#', // Pop the nth element, where n is the (popped) topmost element.
     pop1     = ',', // Pop the top element of the stack.
     pop2     = ';', // Pop the 2nd-to-top element of the stack.
     swap     = '$', // Swap the top 2 elements of the stack.
@@ -51,10 +51,10 @@ pub const Function = enum(u8) {
     // Conditional Movement.
     ifr         = '?', // If the top element is falsey, turn right.
     ifl         = 'I', // If the top element is falsey, turn left.
-    ifjump1     = 'K', // If the top element is falsey, skip the next square.
-    ifjump      = 'k', // If the 2nd-to-top element is falsey, skip the next n squares.
-    unlessjump1 = 'H', // If the top element is truthy, skip the next square.
-    unlessjump  = 'h', // If the 2nd-to-top element is truthy, skip the next n squares.
+    ifjump1     = 'H', // If the top element is falsey, skip the next square.
+    ifjump      = 'h', // If the 2nd-to-top element is falsey, skip the next n squares.
+    unlessjump1 = 'K', // If the top element is truthy, skip the next square.
+    unlessjump  = 'k', // If the 2nd-to-top element is truthy, skip the next n squares.
 
     // Misc
     sleep1    = 'Z', // Sleep for 1 tick.
@@ -64,21 +64,21 @@ pub const Function = enum(u8) {
 
     // Math
     neg  = '~', // Negate the topmost element.
+    inc  = 'X', // Increment the topmost element.
+    dec  = 'x', // Decrement the topmost element.
     add  = '+', // Add the top two elements.
     sub  = '_', // Subtract the topmost element from the 2nd-to-top element. (`-` is already used)
     mul  = '*', // Multiply the top two elements.
     div  = '/', // Divide the 2nd-to-top element by the topmost.
     mod  = '%', // Modulo the 2nd-to-top element by the topmost.
-    inc  = 'X', // Increment the topmost element.
-    dec  = 'x', // Decrement the topmost element.
     rand = 'r', // Push a random integer.
 
     // Logic
+    not = '!', // Negate the topmost element.
     eql = '=', // Check to see if the top two elements are equal
     lth = 'l', // See if the second-to-top element is less than the topmost.
     gth = 'g', // See if the second-to-top element is less than the topmost.
     cmp = 'c', // Compare the second-to-top element to the topmost.
-    not = '!', // Negate the topmost element.
 
     // Integer & Array functions
     chr = 'A', // [top]
@@ -121,10 +121,10 @@ pub const Function = enum(u8) {
             .dump, .dumpq, .quit0, .gets, .str, .jump1, .randdir, .rand, .spawnl, .spawnr => 0,
 
             .pop1, .dup, .pop, .not, .chr, .ord, .tos, .toi, .inc, .dec, .neg => 1,
-            .ifl, .ifr, .ifpop, .unlessjump1, .ifjump1, .jump, .quit, .len => 1,
+            .ifl, .ifr, .ifpop, .ifjump1, .unlessjump1, .jump, .quit, .len => 1,
             .print, .printnl, .dumpval, .dumpvalnl, .sleep, .setcolour => 1,
 
-            .add, .sub, .mul, .div, .mod, .eql, .lth, .gth, .cmp, .unlessjump, .ifjump => 2,
+            .add, .sub, .mul, .div, .mod, .eql, .lth, .gth, .cmp, .ifjump, .unlessjump => 2,
             .get => 3,
             .set => 4,
 
