@@ -1,0 +1,8 @@
+#!/usr/bin/env labyrinth
+C!--?--"usage: "p0fp" integer"P--1q
+    |
+    |     v-----x-$-----<   # calculate and print the 
+    |     |             |   # factorial of 10
+    >-1-$->--.--?--$:*--^
+                |
+        Q--N,---<

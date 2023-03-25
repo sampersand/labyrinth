@@ -1,4 +1,9 @@
 const std = @import("std");
+const IntType = @import("types.zig").IntType;
+
+pub const ForeignFunction = enum(IntType) {
+    program_name,
+};
 
 pub const Function = enum(u8) {
     // zig fmt: off
@@ -22,7 +27,7 @@ pub const Function = enum(u8) {
     dup      = '@', // Duplicate the nth element, where n is the (popped) topmost element.
     dup1     = '.', // Duplicate top element of the stack
     dup2     = ':', // Duplicate the 2nd topmost element of the stack.
-    pop      = '#', // Pop the nth element, where n is the (popped) topmost element.
+    pop      = '&', // Pop the nth element, where n is the (popped) topmost element.
     pop1     = ',', // Pop the top element of the stack.
     pop2     = ';', // Pop the 2nd-to-top element of the stack.
     swap     = '$', // Swap the top 2 elements of the stack.
@@ -35,7 +40,12 @@ pub const Function = enum(u8) {
     spawnl = 'M', // Spawn a minotaur going left.
     spawnr = 'm', // Spawn a minotaur going right.
     slay1 = 'F', // todo
-    slay = 'f', // todo
+    // slay = 'f', // todo
+    branchl = 'B',
+    branchr = 'b',
+    branch = 'V',
+    travel = 't',
+    travelq = '`',
 
     // Movement Functions
     right    = '>', // Set velocity to 1 unit rightwards.
@@ -61,6 +71,7 @@ pub const Function = enum(u8) {
     sleep     = 'z', // Sleep for the next n ticks.
     inccolour = 'U', // Increments the colour for the current minotaur.
     setcolour = 'u', // Sets the colour to the topmost stack for the current minotaur.
+    foreign   = 'f', // Does a foreign function.
 
     // Math
     neg  = '~', // Negate the topmost element.
@@ -116,7 +127,7 @@ pub const Function = enum(u8) {
     pub fn arity(func: Function) usize {
         return switch (func) {
             .int0, .int1, .int2, .int3, .int4, .int5, .int6, .int7, .int8, .int9 => 0,
-            .dup1, .dup2, .pop2, .swap, .stacklen, .inccolour => 0,
+            .dup1, .dup2, .pop2, .swap, .stacklen, .inccolour, .branchl, .branchr, .branch => 0,
             .moveh, .movev, .up, .down, .left, .right, .speedup, .slowdown, .sleep1 => 0,
             .dump, .dumpq, .quit0, .gets, .str, .jump1, .randdir, .rand, .spawnl, .spawnr => 0,
 
@@ -124,11 +135,13 @@ pub const Function = enum(u8) {
             .ifl, .ifr, .ifpop, .ifjump1, .unlessjump1, .jump, .quit, .len => 1,
             .print, .printnl, .dumpval, .dumpvalnl, .sleep, .setcolour => 1,
 
-            .add, .sub, .mul, .div, .mod, .eql, .lth, .gth, .cmp, .ifjump, .unlessjump => 2,
+            .add, .sub, .mul, .div, .mod, .eql, .lth, .gth, .cmp, .ifjump, .unlessjump, .travel, .travelq => 2,
             .get => 3,
             .set => 4,
 
-            .ary, .ary_end, .slay1, .slay => @panic("todo"),
+            .foreign => 1,
+
+            .ary, .ary_end, .slay1 => @panic("todo"),
         };
     }
 };

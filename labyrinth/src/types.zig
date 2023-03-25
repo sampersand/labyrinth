@@ -10,8 +10,14 @@ pub fn toArray(int: IntType, alloc: Allocator) Allocator.Error!*Array {
     const bytes = std.fmt.bufPrint(&buf, "{d}", .{int}) catch unreachable;
     var ary = Array.empty;
 
-    for (bytes) |byte|
+    // todo: use std.mem.reverseIterator
+    var idx = bytes.len;
+    while (true) {
+        idx -= 1;
+        const byte = buf[idx];
         ary = try ary.consNoIncrement(alloc, Value.from(@intCast(IntType, byte)));
+        if (idx == 0) break;
+    }
 
     return ary;
 }

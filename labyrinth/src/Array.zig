@@ -150,6 +150,20 @@ pub fn parseInt(ary: *const Array) ParseIntError!IntType {
     return int * sign;
 }
 
+pub fn fromString(alloc: Allocator, string: []const u8) Allocator.Error!*Array {
+    var ary = Array.empty;
+    var idx = string.len; // TODO: std.mem.reverseIterator when it comes out.
+
+    while (true) {
+        idx -= 1;
+        const byte = string[idx];
+        ary = try ary.consNoIncrement(alloc, Value.from(@intCast(IntType, byte)));
+        if (idx == 0) break;
+    }
+
+    return ary;
+}
+
 pub fn format(
     ary: *const Array,
     comptime fmt: []const u8,

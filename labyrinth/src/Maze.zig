@@ -13,6 +13,12 @@ max_x: usize = 0,
 
 fn parseMaze(maze: *Maze, alloc: Allocator, source: []const u8) Allocator.Error!void {
     var iter = std.mem.split(u8, source, "\n");
+
+    // Ignore shebang if it exists.
+    if (2 <= source.len and source[0] == '#' and source[1] == '!') {
+        _ = iter.next();
+    }
+
     while (iter.next()) |line| {
         var dup = try alloc.dupe(u8, line);
         errdefer alloc.free(dup);

@@ -6,17 +6,18 @@ const Maze = @import("Maze.zig");
 const utils = @import("utils.zig");
 
 iter: std.process.ArgIterator,
-program_name: []const u8,
 alloc: Allocator,
-options: Labyrinth.Options = .{},
+options: Labyrinth.Options,
 filename: ?[]const u8 = null,
 expr: ?[]const u8 = null,
 
 pub fn init(alloc: Allocator) !CommandLineArgs {
     var iter = try std.process.ArgIterator.initWithAllocator(alloc);
-    const program_name = iter.next() orelse return error.NoProgramName;
+    var options = Labyrinth.Options{
+        .program_name = iter.next() orelse return error.NoProgramName,
+    };
 
-    return CommandLineArgs{ .alloc = alloc, .iter = iter, .program_name = program_name };
+    return CommandLineArgs{ .alloc = alloc, .iter = iter, .options = options };
 }
 
 pub fn createLabyrinth(cla: CommandLineArgs) !Labyrinth {
@@ -59,7 +60,7 @@ fn stop(
     comptime fmt: []const u8,
     fmtArgs: anytype,
 ) noreturn {
-    stopNoPrefix(status, "{s}: " ++ fmt, .{cla.program_name} ++ fmtArgs);
+    stopNoPrefix(status, "{s}: " ++ fmt, .{cla.options.program_name} ++ fmtArgs);
 }
 
 fn stopNoPrefix(comptime status: Status, comptime fmt: []const u8, fmt_args: anytype) noreturn {
@@ -120,5 +121,5 @@ fn writeUsage(cla: *const CommandLineArgs) noreturn {
         \\  -d        enables debug mode
         \\If a file is `-`, data is read from stdin.
         \\
-    , .{ version, cla.program_name });
+    , .{ version, cla.options.program_name });
 }

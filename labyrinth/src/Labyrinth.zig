@@ -10,8 +10,9 @@ const Labyrinth = @This();
 pub const MinotaurId = usize;
 
 maze: Maze,
-options: Options = .{},
+options: Options,
 minotaurs: std.ArrayListUnmanaged(*Minotaur),
+timelines: std.ArrayListUnmanaged(*Minotaur),
 allocator: Allocator,
 exit_status: ?u8 = null,
 generation: usize = 0,
@@ -25,11 +26,15 @@ pub const Options = struct {
     wait_for_user_input: bool = false,
     debug: bool = false,
     sleep_ms: u32 = 10, //25,
+    program_name: []const u8,
 };
 
 pub fn init(alloc: Allocator, maze: Maze, options: Options) Allocator.Error!Labyrinth {
     var minotaurs = try std.ArrayListUnmanaged(*Minotaur).initCapacity(alloc, 8);
     errdefer minotaurs.deinit(alloc);
+
+    var timelines = try std.ArrayListUnmanaged(*Minotaur).initCapacity(alloc, 8);
+    errdefer timelines.deinit(alloc);
 
     var minotaur = try Minotaur.initCapacity(alloc, 8);
     minotaur.is_first = true;
@@ -40,6 +45,7 @@ pub fn init(alloc: Allocator, maze: Maze, options: Options) Allocator.Error!Laby
         .maze = maze,
         .allocator = alloc,
         .minotaurs = minotaurs,
+        .timelines = timelines,
         .options = options,
         .stdout = std.io.getStdOut(),
         .rng = std.rand.DefaultPrng.init(@intCast(u64, std.time.milliTimestamp())),
@@ -49,10 +55,11 @@ pub fn init(alloc: Allocator, maze: Maze, options: Options) Allocator.Error!Laby
 pub fn deinit(labyrinth: *Labyrinth) void {
     labyrinth.maze.deinit(labyrinth.allocator);
 
-    for (labyrinth.minotaurs.items) |minotaur|
-        minotaur.deinit();
+    for (labyrinth.minotaurs.items) |minotaur| minotaur.deinit();
+    for (labyrinth.timelines.items) |minotaur| minotaur.deinit();
 
     labyrinth.minotaurs.deinit(labyrinth.allocator);
+    labyrinth.timelines.deinit(labyrinth.allocator);
 }
 
 pub fn format(
@@ -74,6 +81,16 @@ pub fn format(
         try writer.print("{}", .{minotaur});
     }
     try writer.writeAll("])");
+}
+pub fn addTimeline(labyrinth: *Labyrinth, minotaur: *Minotaur) Allocator.Error!usize {
+    const id = labyrinth.timelines.items.len;
+    try labyrinth.timelines.append(labyrinth.allocator, minotaur);
+    return id;
+}
+
+pub fn getTimeline(labyrinth: *Labyrinth, id: usize) MinotaurGetError!*Minotaur {
+    if (labyrinth.timelines.items.len <= id) return error.MinotaurDoesntExist;
+    return labyrinth.timelines.items[id];
 }
 
 pub fn spawnMinotaur(this: *Labyrinth, minotaur: *Minotaur) Allocator.Error!void {
@@ -144,9 +161,7 @@ pub fn tickMinotaur(this: *Labyrinth, id: MinotaurId) !TickResult {
     }
 
     this.slayMinotaur(id) catch unreachable; // we already validated it earlier.
-    const new_spawned = try this.addNewMinotaurs();
-    assert(!new_spawned); // we dont (currently) spawn minotaurs at the same time we slay them.
-    return .slayed;
+    return if (try this.addNewMinotaurs()) .alive else .slayed;
 }
 
 pub fn stepAllMinotaurs(this: *Labyrinth) !void {

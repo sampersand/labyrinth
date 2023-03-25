@@ -6,6 +6,7 @@ const Coordinate = @import("Coordinate.zig");
 const Vector = @import("Vector.zig");
 const Value = @import("Value.zig");
 const Function = @import("function.zig").Function;
+const ForeignFunction = @import("function.zig").ForeignFunction;
 const IntType = @import("types.zig").IntType;
 const Array = @import("Array.zig");
 const Maze = @import("Maze.zig");
@@ -41,8 +42,7 @@ pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!*Minotaur {
     return minotaur;
 }
 
-/// Deinitializes the minotaur and all associated items.
-pub fn deinit(minotaur: *Minotaur) void {
+pub fn deinitNotDestroyThough(minotaur: *Minotaur) void {
     switch (minotaur.mode) {
         .string => |ary| ary.deinit(minotaur.allocator),
         else => {},
@@ -51,7 +51,11 @@ pub fn deinit(minotaur: *Minotaur) void {
     for (minotaur.stack.items) |item|
         item.deinit(minotaur.allocator);
     minotaur.stack.deinit(minotaur.allocator);
+}
 
+/// Deinitializes the minotaur and all associated items.
+pub fn deinit(minotaur: *Minotaur) void {
+    minotaur.deinitNotDestroyThough();
     minotaur.allocator.destroy(minotaur);
 }
 
@@ -155,9 +159,10 @@ const PlayError = error{
     TooFewArgumentsForFunction,
     IntOutOfBounds,
     IntLiteralOverflow,
+    UnknownForeignFunction,
 } || Maze.GetError || StackError || std.os.WriteError || Allocator.Error ||
     Array.ParseIntError || Function.ValidateError || Value.OrdError || Value.MathError ||
-    Coordinate.MoveError;
+    Coordinate.MoveError || Labyrinth.MinotaurGetError;
 
 pub fn tick(minotaur: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
     // If we're currently sleeping, then continue sleeping.
@@ -247,6 +252,15 @@ fn randomVelocity(rng: *std.rand.DefaultPrng) Vector {
     };
 }
 
+fn foreign(minotaur: *Minotaur, labyrinth: *Labyrinth, function: ForeignFunction) !void {
+    switch (function) {
+        .program_name => try minotaur.push(Value.from(try Array.fromString(
+            labyrinth.allocator,
+            labyrinth.maze.filename,
+        ))),
+    }
+}
+
 fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) PlayError!void {
     std.debug.assert(minotaur.sleep_duration == 0);
 
@@ -283,6 +297,26 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         },
         .spawnl => try labyrinth.spawnMinotaur(try minotaur.cloneRotate(.left)),
         .spawnr => try labyrinth.spawnMinotaur(try minotaur.cloneRotate(.right)),
+        .branchl, .branchr => {
+            var cl = try minotaur.cloneRotate(if (function == .branchl) .left else .right);
+            errdefer cl.deinit();
+            const id = try labyrinth.addTimeline(cl);
+            ret = Value.from(@intCast(IntType, id));
+        },
+        .branch => {
+            const id = try labyrinth.addTimeline(try minotaur.clone());
+            ret = Value.from(@intCast(IntType, id));
+        },
+        .travel, .travelq => {
+            const id = try castInt(usize, try minotaur.args[0].toInt());
+            var alternate_reality = try (try labyrinth.getTimeline(id)).clone();
+            errdefer alternate_reality.deinit();
+            try alternate_reality.push(minotaur.args[1].clone());
+            if (function == .travelq) {
+                minotaur.exit_status = 0;
+            }
+            try labyrinth.spawnMinotaur(alternate_reality);
+        },
 
         // Movement
         .left => minotaur.velocity = Vector.Left,
@@ -302,16 +336,28 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         .ifr => if (!minotaur.args[0].isTruthy()) {
             minotaur.velocity = minotaur.velocity.rotate(.right);
         },
-        .ifjump1 => if (!minotaur.args[0].isTruthy()) try minotaur.advance(),
-        .ifjump => if (!minotaur.args[0].isTruthy()) try minotaur.jumpn(minotaur.args[1]),
-        .unlessjump1 => if (minotaur.args[0].isTruthy()) try minotaur.advance(),
-        .unlessjump => if (minotaur.args[0].isTruthy()) try minotaur.jumpn(minotaur.args[1]),
+        .ifjump1 => if (!minotaur.args[0].isTruthy()) {
+            try minotaur.advance();
+        },
+        .ifjump => if (!minotaur.args[1].isTruthy()) {
+            try minotaur.jumpn(minotaur.args[0]);
+        },
+        .unlessjump1 => if (minotaur.args[0].isTruthy()) {
+            try minotaur.advance();
+        },
+        .unlessjump => if (minotaur.args[1].isTruthy()) {
+            try minotaur.jumpn(minotaur.args[0]);
+        },
 
         // Misc
         .sleep1 => minotaur.sleep_duration = 1,
         .sleep => minotaur.sleep_duration = try castInt(usize, try minotaur.args[0].toInt()),
         .inccolour => minotaur.colour +%= 1,
         .setcolour => minotaur.colour = @bitCast(u8, @truncate(i8, try minotaur.args[0].toInt())),
+        .foreign => {
+            const func = std.meta.intToEnum(ForeignFunction, try minotaur.args[0].toInt()) catch return error.UnknownForeignFunction;
+            try minotaur.foreign(labyrinth, func);
+        },
 
         // Math
         .neg => ret = try minotaur.args[0].mul(minotaur.allocator, Value.from(-1)),
@@ -346,14 +392,14 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         .dumpval => try labyrinth.stdout.writer().print("{d}", .{minotaur.args[0]}),
         .dumpvalnl => try labyrinth.stdout.writer().print("{d}\n", .{minotaur.args[0]}),
         .dumpq, .dump => {
-            try labyrinth.stdout.writer().print("{}", .{labyrinth});
+            try labyrinth.stdout.writer().print("{}\n", .{labyrinth});
             if (function == .dumpq) minotaur.exit_status = 0;
         },
         .quit0 => minotaur.exit_status = 0,
         .quit => minotaur.exit_status = try castInt(u8, try minotaur.args[0].toInt()),
 
         // to implement:
-        .ary, .ary_end, .slay1, .slay, .gets, .get, .set => @panic("todo"),
+        .ary, .ary_end, .slay1, .gets, .get, .set => @panic("todo"),
     }
 
     if (ret) |value| try minotaur.push(value);
