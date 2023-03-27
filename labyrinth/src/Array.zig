@@ -1,9 +1,10 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const Array = @This();
 const Value = @import("Value.zig");
 const IntType = @import("types.zig").IntType;
 const utils = @import("utils.zig");
+
+const Array = @This();
 
 refcount: u32 = 1,
 next: ?*Array = null,
@@ -30,17 +31,17 @@ pub fn deinit(ary: *Array, alloc: Allocator) void {
     alloc.destroy(ary);
 }
 
-pub fn consNoIncrement(ary: *Array, alloc: Allocator, value: Value) Allocator.Error!*Array {
+pub fn prependNoIncrement(ary: *Array, alloc: Allocator, value: Value) Allocator.Error!*Array {
     var new = try init(alloc, value);
     new.next = ary;
     return new;
 }
 
-pub fn cons(ary: *Array, alloc: Allocator, value: Value) Allocator.Error!*Array {
-    var new = try ary.consNoIncrement(alloc, value);
-    ary.increment();
-    return new;
-}
+// pub fn perepend(ary: *Array, alloc: Allocator, value: Value) Allocator.Error!*Array {
+//     var new = try ary.prependNoIncrement(alloc, value);
+//     ary.increment();
+//     return new;
+// }
 
 /// Increments the refcount by one.
 pub inline fn increment(ary: *Array) void {
@@ -60,6 +61,18 @@ pub fn decrement(ary: *Array, alloc: Allocator) void {
     if (ary.refcount == 0) ary.deinit(alloc);
 }
 
+pub fn cons(ary: *Array, alloc: Allocator, end: *Array) Allocator.Error!*Array {
+    // no need to decrement counts
+    if (ary.isEmpty()) return end;
+    if (end.isEmpty()) return ary;
+    _ = alloc;
+
+    return empty;
+    // var begin = Array.
+    // var begin = try ary.deepClone(alloc);
+    // const dup = try ary.deepClone(minotaur.allocator);
+    // var dup_iter = dup.iter();
+}
 pub const Iterator = struct {
     array: *const Array,
 
@@ -86,7 +99,7 @@ pub fn reverse(ary: *const Array, alloc: Allocator) Allocator.Error!*Array {
     var current = empty;
     var iterator = ary.iter();
     while (iterator.next()) |value| {
-        current = try current.consNoIncrement(alloc, value.clone());
+        current = try current.prependNoIncrement(alloc, value.clone());
     }
     return current;
 }
@@ -126,28 +139,48 @@ pub const ParseIntError = error{ NotAnArrayOfInts, Overflow };
 pub fn parseInt(ary: *const Array) ParseIntError!IntType {
     if (ary.isEmpty()) return 0;
 
-    const minus = comptime Value.from('-');
     var int: IntType = 0;
-    var sign: IntType = 1;
+    var sign: ?IntType = null;
+    var iterator = ary.iter();
 
-    var curr: ?*const Array = ary;
-
-    if (ary.value.equals(minus)) {
-        sign = -1;
-        curr = curr.?.next;
-    }
-
-    while (if (curr == null) null else (curr orelse unreachable).next) |next| : (curr = next) {
-        switch (next.value.classify()) {
+    while (iterator.next()) |val| {
+        switch (val.classify()) {
             .int => |i| {
-                if (i < '0' or '9' < i) break;
-                int = try std.math.add(IntType, try std.math.mul(IntType, int, 10), i - '0');
+                const byte = std.math.cast(u8, i) orelse break;
+
+                if (sign == null) {
+                    if (std.ascii.isWhitespace(byte)) continue;
+                    if (byte == '-') {
+                        sign = -1;
+                        continue;
+                    }
+                    sign = 1;
+                }
+
+                const digit = std.fmt.charToDigit(byte, 10) catch break;
+                int = try std.math.add(IntType, try std.math.mul(IntType, int, 10), digit);
             },
             else => return error.NotAnArrayOfInts,
         }
     }
+    return std.math.mul(IntType, int, sign orelse 1);
 
-    return int * sign;
+    // if (ary.value.equals(minus)) {
+    //     sign = -1;
+    //     curr = curr.?.next;
+    // }
+
+    // while (if (curr == null) null else (curr orelse unreachable).next) |next| : (curr = next) {
+    //     switch (next.value.classify()) {
+    //         .int => |i| {
+    //             if (i < '0' or '9' < i) break;
+    //             int = try std.math.add(IntType, try std.math.mul(IntType, int, 10), i - '0');
+    //         },
+    //         else => return error.NotAnArrayOfInts,
+    //     }
+    // }
+
+    // return int * sign;
 }
 
 pub fn fromString(alloc: Allocator, string: []const u8) Allocator.Error!*Array {
@@ -157,7 +190,7 @@ pub fn fromString(alloc: Allocator, string: []const u8) Allocator.Error!*Array {
     while (true) {
         idx -= 1;
         const byte = string[idx];
-        ary = try ary.consNoIncrement(alloc, Value.from(@intCast(IntType, byte)));
+        ary = try ary.prependNoIncrement(alloc, Value.from(@intCast(IntType, byte)));
         if (idx == 0) break;
     }
 

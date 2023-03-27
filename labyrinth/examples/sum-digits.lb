@@ -1,0 +1,15 @@
+#!/usr/bin/env labyrinth
+C!--?--"usage: "p-0fp-" integer"P-1q
+    i   q
+    0   N
+    >--:I--:10%--v
+    |            |
+    ^--$-/01$-+--<
+
+shortened version:
+
+C!?1q
+  i |
+  0 N
+  >:I:10%v
+  ^$/01$+<

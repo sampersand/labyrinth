@@ -1,13 +1,13 @@
 #!/usr/bin/env labyrinth
---"Hello, "--p--v  # The classic "Hello world" program in labyrinth.
-                |  #
-                "  # Labyrinth, a "2d" programming language, starts executing
-                w  # the upper-left-most instruction and goes right. The `-` 
-                o  # and `|` functions are whitespace. `"` starts parsing a
-                r  # string (it'll keep going in the same direction until
-                l  # another `"` is read). `p` prints out the top value of the
-                d  # stack without a new line (`P` adds a newline). `v` sets
-                !  # the direction to downwards, and `Q` exits with code 0.
+--"Hello, "--p--v  The classic "Hello world" program in labyrinth.
+                |  
+                "  Labyrinth, a "2d" programming language, starts executing
+                w  the upper-left-most instruction and goes right. The `-` 
+                o  and `|` functions are whitespace. `"` starts parsing a
+                r  string (it'll keep going in the same direction until
+                l  another `"` is read). `p` prints out the top value of the
+                d  stack without a new line (`P` adds a newline). `v` sets
+                !  the direction to downwards, and `Q` exits with code 0.
                 "  
                 P  
                 |  

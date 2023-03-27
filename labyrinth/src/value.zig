@@ -14,7 +14,7 @@ pub const ValueType = union(enum) {
     ary: *Array,
 };
 
-const DataType = i64;
+pub const DataType = i64;
 _data: DataType,
 
 /// Creates a new value from `val`.
@@ -141,7 +141,7 @@ fn mapIt(
                 var ary = Array.empty;
                 var iter = a.iter();
                 while (iter.next()) |item|
-                    ary = try ary.consNoIncrement(alloc, try value.mapIt(alloc, item, func));
+                    ary = try ary.prependNoIncrement(alloc, try value.mapIt(alloc, item, func));
                 return Value.from(ary);
             },
         },
@@ -150,7 +150,7 @@ fn mapIt(
                 var ary = Array.empty;
                 var iter = a.iter();
                 while (iter.next()) |item|
-                    ary = try ary.consNoIncrement(alloc, try item.mapIt(alloc, rhs, func));
+                    ary = try ary.prependNoIncrement(alloc, try item.mapIt(alloc, rhs, func));
                 return Value.from(ary);
             },
             .ary => |r| {
@@ -159,7 +159,7 @@ fn mapIt(
                 var riter = r.iter();
                 while (liter.next()) |left| {
                     const right = riter.next() orelse return error.ArrayLengthMismatch;
-                    ary = try ary.consNoIncrement(alloc, try left.mapIt(alloc, right, func));
+                    ary = try ary.prependNoIncrement(alloc, try left.mapIt(alloc, right, func));
                 }
 
                 return if (riter.next() == null) Value.from(ary) else error.ArrayLengthMismatch;

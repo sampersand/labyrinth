@@ -3,6 +3,8 @@ const Allocator = std.mem.Allocator;
 const CommandLineArgs = @This();
 const Labyrinth = @import("Labyrinth.zig");
 const Maze = @import("Maze.zig");
+const Array = @import("Array.zig");
+const Value = @import("Value.zig");
 const utils = @import("utils.zig");
 
 iter: std.process.ArgIterator,
@@ -33,9 +35,22 @@ pub fn createLabyrinth(cla: CommandLineArgs) !Labyrinth {
         cla.stop(.err, "either `-e` or a filename must be given", .{});
     }
 
-    errdefer maze.deinit(cla.alloc);
+    var labyrinth = Labyrinth.init(cla.alloc, maze, cla.options) catch |err| {
+        maze.deinit(cla.alloc);
+        return err;
+    };
+    errdefer labyrinth.deinit();
 
-    return try Labyrinth.init(cla.alloc, maze, cla.options);
+    var iter = cla.iter;
+    var minotaur = labyrinth.getMinotaur(0) catch unreachable;
+    while (iter.next()) |field| {
+        const string = try Array.fromString(labyrinth.allocator, field);
+        errdefer string.deinit(labyrinth.allocator);
+
+        try minotaur.push(Value.from(string));
+    }
+
+    return labyrinth;
 }
 
 pub fn deinit(cla: *CommandLineArgs) void {
@@ -45,11 +60,13 @@ pub fn deinit(cla: *CommandLineArgs) void {
 // zig fmt: off
 const Option = enum {
     @"-", // read from stdin
-    @"-h", @"--help",    // prints usage and exits
-    @"-v", @"--version", // dumps version and exits
-    @"-d", @"--debug",   // enables debug mode
-    @"-e", @"--expr",    // executes the next argument
-           @"--chdir",   // chdir to next argument before anything else
+    @"-h", @"--help",              // prints usage and exits
+    @"-v", @"--version",           // dumps version and exits
+    @"-d", @"--debug",             // enables debug mode
+    @"-e", @"--expr",              // executes the next argument
+           @"--chdir",             // chdir to next argument before anything else
+    @"-o", @"--output-maze",       // outputs maze at each step.
+    @"-m", @"--output-minotaurs",  // outputs minotaurs at each step.
 };
 // zig fmt: on
 
@@ -100,6 +117,8 @@ pub fn parse(cla: *CommandLineArgs) !void {
                 cla.expr = cla.nextPositional(option);
                 break;
             },
+            .@"-o", .@"--output-maze" => cla.options.print_maze = true,
+            .@"-m", .@"--output-minotaurs" => cla.options.print_minotaurs = true,
             .@"--chdir" => try std.os.chdir(cla.nextPositional(option)),
         }
     }
@@ -114,11 +133,15 @@ fn writeVersion() noreturn {
 fn writeUsage(cla: *const CommandLineArgs) noreturn {
     stopNoPrefix(.ok,
         \\Labyrinth {s}
-        \\usage: {s} [flags] (-e expr | filename)
+        \\usage: {s} [flags] filename
         \\flags:
-        \\  -h        shows cla
-        \\  -v        prints version
-        \\  -d        enables debug mode
+        \\  -h --help       shows this
+        \\  -v --version    prints version
+        \\  -d --debug      enables debug mode
+        \\  -e --expr EXPR  runs EXPR; omit `filename`
+        \\     --chdir DIR  changes to DIR
+        \\  -o --output-maze prints maze at each step
+        \\  -m --output-minotaurs prints minotaurs too.
         \\If a file is `-`, data is read from stdin.
         \\
     , .{ version, cla.options.program_name });

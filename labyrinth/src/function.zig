@@ -27,7 +27,7 @@ pub const Function = enum(u8) {
     dup      = '@', // Duplicate the nth element, where n is the (popped) topmost element.
     dup1     = '.', // Duplicate top element of the stack
     dup2     = ':', // Duplicate the 2nd topmost element of the stack.
-    pop      = '&', // Pop the nth element, where n is the (popped) topmost element.
+    pop      = '\'', // Pop the nth element, where n is the (popped) topmost element.
     pop1     = ',', // Pop the top element of the stack.
     pop2     = ';', // Pop the 2nd-to-top element of the stack.
     swap     = '$', // Swap the top 2 elements of the stack.
@@ -99,6 +99,9 @@ pub const Function = enum(u8) {
     len = 'L', // Get the length of the topmost item.
     get = 'G', // TODO
     set = 'S', // TODO
+    head = '(', // top[0]
+    tail = ')', // top[1..]
+    cons = '&', // top + secondtotop
 
     // io
     printnl   = 'P', // Print the topmost element with a newline. See print for details
@@ -109,7 +112,7 @@ pub const Function = enum(u8) {
     dump      = 'd', // Dumps the labyrinth without quitting.
     quit0     = 'Q', // Kills the current minotaur; Exits with code 0 if it's the last minotaur.
     quit      = 'q', // Kills the current minotaur; Exits with code n if it's the last minotaur.
-    gets      = '(', // TODO
+    gets      = 0x01, // TODO
     // zig fmt: on
 
     // Gets the byte representation of `func`.
@@ -134,8 +137,10 @@ pub const Function = enum(u8) {
             .pop1, .dup, .pop, .not, .chr, .ord, .tos, .toi, .inc, .dec, .neg => 1,
             .ifl, .ifr, .ifpop, .ifjump1, .unlessjump1, .jump, .quit, .len => 1,
             .print, .printnl, .dumpval, .dumpvalnl, .sleep, .setcolour => 1,
+            .head, .tail => 1,
 
             .add, .sub, .mul, .div, .mod, .eql, .lth, .gth, .cmp, .ifjump, .unlessjump, .travel, .travelq => 2,
+            .cons => 2,
             .get => 3,
             .set => 4,
 

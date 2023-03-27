@@ -142,8 +142,8 @@ pub fn format(
     writer: anytype,
 ) std.os.WriteError!void {
     try writer.print(
-        "Minotaur{{position={any},velocity={any},stack=[",
-        .{ minotaur.positions[0], minotaur.velocity },
+        "Minotaur{{position={any},velocity={any},colour={d},stack=[",
+        .{ minotaur.positions[0], minotaur.velocity, minotaur.colour },
     );
 
     for (minotaur.stack.items) |*value, idx| {
@@ -160,6 +160,7 @@ const PlayError = error{
     IntOutOfBounds,
     IntLiteralOverflow,
     UnknownForeignFunction,
+    EmptyArray,
 } || Maze.GetError || StackError || std.os.WriteError || Allocator.Error ||
     Array.ParseIntError || Function.ValidateError || Value.OrdError || Value.MathError ||
     Coordinate.MoveError || Labyrinth.MinotaurGetError;
@@ -186,7 +187,7 @@ pub fn tick(minotaur: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
         .string => |*ary| {
             // If it's not the end quote, then just push it to the end.
             if (byte != comptime Function.str.toByte()) {
-                ary.* = try ary.*.consNoIncrement(minotaur.allocator, Value.from(@intCast(IntType, byte)));
+                ary.* = try ary.*.prependNoIncrement(minotaur.allocator, Value.from(@intCast(IntType, byte)));
             } else {
                 // It's the closing quote, then push it onto the list of chars and return.
                 try minotaur.push(Value.from(try ary.*.reverse(minotaur.allocator)));
@@ -385,6 +386,28 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         ),
         .toi => ret = Value.from(try minotaur.args[0].toInt()),
         .tos => ret = Value.from(try minotaur.args[0].toArray(minotaur.allocator)),
+        .head => {
+            const ary = try minotaur.args[0].toArray(minotaur.allocator);
+            defer ary.deinit(minotaur.allocator);
+            var iter = ary.iter();
+            ret = (iter.next() orelse return error.EmptyArray).clone();
+        },
+        .tail => {
+            const ary = try minotaur.args[0].toArray(minotaur.allocator);
+            defer ary.deinit(minotaur.allocator);
+            var next = ary.next orelse return error.EmptyArray;
+            next.increment();
+            ret = Value.from(next);
+        },
+        .cons => {
+            const begin = try minotaur.args[1].toArray(minotaur.allocator);
+            errdefer begin.deinit(minotaur.allocator);
+
+            const end = try minotaur.args[0].toArray(minotaur.allocator);
+            errdefer end.deinit(minotaur.allocator);
+
+            ret = Value.from(try begin.cons(minotaur.allocator, end));
+        },
 
         // io
         .print => try labyrinth.stdout.writer().print("{s}", .{minotaur.args[0]}),
