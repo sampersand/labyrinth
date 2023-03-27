@@ -42,6 +42,12 @@ pub fn build(b: *std.build.Builder) void {
 
     build_options.addOption(
         usize,
+        "vector_bits",
+        b.option(usize, "vector_bits", "Size of a vector") orelse 32,
+    );
+
+    build_options.addOption(
+        usize,
         "prev_positions",
         1 + (b.option(usize, "prev_positions", "Amnt of extra positions to store") orelse 4),
     );

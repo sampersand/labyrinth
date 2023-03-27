@@ -56,23 +56,11 @@ pub fn deinit(value: Value, alloc: Allocator) void {
 
 /// Checks to see if `value` is truthy.
 ///
-/// Only zero, an empty array, or an array with just the value 1 are falsey.
+/// Only zero and empty arrays are falsey.
 pub fn isTruthy(value: Value) bool {
     return switch (value.classify()) {
         .int => |int| int != 0,
-        .ary => |ary| {
-            var iter = ary.iter();
-            const item = iter.next() orelse return false;
-            return if (item.equals(comptime Value.from(0))) iter.next() != null else true;
-        },
-    };
-}
-
-/// Returns how many elements are in `value`.
-pub fn len(value: Value) usize {
-    return switch (value.classify()) {
-        .int => 1,
-        .ary => |ary| ary.len(),
+        .ary => |ary| !ary.isEmpty(),
     };
 }
 
@@ -103,7 +91,19 @@ pub fn format(
 ) std.os.WriteError!void {
     return switch (value.classify()) {
         .ary => |ary| ary.format(fmt, opts, writer),
-        .int => |int| int_type.format(int, fmt, writer),
+        .int => |int| {
+            switch (comptime utils.FmtEnum.mustFrom(fmt)) {
+                .d, .any => try writer.print("{d}", .{int}),
+                .s => {
+                    var buf: [std.math.maxInt(u3)]u8 = undefined;
+                    const len = std.unicode.utf8Encode(
+                        std.math.cast(u21, int) orelse return error.Unexpected,
+                        &buf,
+                    ) catch return error.Unexpected;
+                    try writer.writeAll(buf[0..len]);
+                },
+            }
+        },
     };
 }
 

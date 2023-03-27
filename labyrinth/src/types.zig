@@ -21,17 +21,3 @@ pub fn toArray(int: IntType, alloc: Allocator) Allocator.Error!*Array {
 
     return ary;
 }
-
-pub fn format(int: IntType, comptime fmt: []const u8, writer: anytype) !void {
-    switch (comptime utils.FmtEnum.mustFrom(fmt)) {
-        .d, .any => try writer.print("{d}", .{int}),
-        .s => {
-            var buf: [std.math.maxInt(u3)]u8 = undefined;
-            const len = std.unicode.utf8Encode(
-                std.math.cast(u21, int) orelse return error.Unexpected,
-                &buf,
-            ) catch return error.Unexpected;
-            try writer.writeAll(buf[0..len]);
-        },
-    }
-}

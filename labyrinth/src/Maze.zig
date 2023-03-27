@@ -45,10 +45,9 @@ pub fn deinit(maze: *Maze, alloc: Allocator) void {
     maze.lines.deinit(alloc);
 }
 
-pub const GetError = error{OutOfBounds};
-pub fn get(maze: *const Maze, pos: Coordinate) GetError!u8 {
-    const line = utils.safeIndex(maze.lines.items, @as(usize, pos.y)) orelse return error.OutOfBounds;
-    return utils.safeIndex(line, @as(usize, pos.x)) orelse return error.OutOfBounds;
+pub fn get(maze: *const Maze, pos: Coordinate) ?u8 {
+    const line = utils.safeIndex(maze.lines.items, @as(usize, pos.y)) orelse return null;
+    return utils.safeIndex(line, @as(usize, pos.x));
 }
 
 fn printXHeadings(writer: anytype, max_x: usize, max_y_len: usize) std.os.WriteError!void {

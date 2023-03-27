@@ -22,9 +22,8 @@ pub fn clearScreen(writer: anytype) std.os.WriteError!void {
     try writer.writeAll("\x1B[1;1H\x1B[2J");
 }
 
-pub fn safeIndex(slice: anytype, idx: usize) ?@TypeOf(slice[0]) {
-    if (slice.len < idx) return null;
-    return slice[idx];
+pub inline fn safeIndex(slice: anytype, idx: usize) ?@TypeOf(slice[0]) {
+    return if (idx < slice.len) slice[idx] else null;
 }
 
 pub fn println(comptime fmt: []const u8, args: anytype) std.os.WriteError!void {

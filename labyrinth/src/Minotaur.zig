@@ -161,7 +161,7 @@ const PlayError = error{
     IntLiteralOverflow,
     UnknownForeignFunction,
     EmptyArray,
-} || Maze.GetError || StackError || std.os.WriteError || Allocator.Error ||
+} || StackError || std.os.WriteError || Allocator.Error ||
     Array.ParseIntError || Function.ValidateError || Value.OrdError || Value.MathError ||
     Coordinate.MoveError || Labyrinth.MinotaurGetError;
 
@@ -181,7 +181,7 @@ pub fn tick(minotaur: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
     }
 
     // Get the byte we're looking at.
-    const byte = try labyrinth.maze.get(minotaur.positions[0]);
+    const byte = labyrinth.maze.get(minotaur.positions[0]) orelse return error.CoordinateOutOfBounds;
 
     switch (minotaur.mode) {
         .string => |*ary| {
@@ -381,9 +381,12 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         // Integer & Array functions
         .ord => ret = try minotaur.args[0].ord(),
         .chr => ret = try minotaur.args[0].chr(minotaur.allocator),
-        .len => ret = Value.from(
-            std.math.cast(IntType, minotaur.args[0].len()) orelse return error.IntOutOfBounds,
-        ),
+        .len => {
+            var ary = try minotaur.args[0].toArray(minotaur.allocator);
+            defer ary.deinit(minotaur.allocator);
+
+            ret = Value.from(std.math.cast(IntType, ary.len()) orelse return error.IntOutOfBounds);
+        },
         .toi => ret = Value.from(try minotaur.args[0].toInt()),
         .tos => ret = Value.from(try minotaur.args[0].toArray(minotaur.allocator)),
         .head => {

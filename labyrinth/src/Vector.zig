@@ -1,15 +1,12 @@
+//! `Vector`s are `Coordinate`s with directions associated with them.
+//!
+//! They are used within `Minotaur` to keep track of the velocity.
+
 const std = @import("std");
 const build_options = @import("build-options");
 
-/// `Vector`s are `Coordinate`s with directions associated with them.
-///
-/// They are used within `Minotaur` to keep track of the velocity.
+const VectorInt = std.meta.Int(.signed, build_options.vector_bits);
 const Vector = @This();
-const VectorInt = i32;
-// if (build_options.max_velocity) |max|
-//     std.math.IntFittingRange(0, max)
-// else
-//     i32;
 
 /// The x coordinate of the vector.
 x: VectorInt = 0,
@@ -32,52 +29,54 @@ pub const Right = Vector{ .x = 1 };
 /// Gets the direction the `Vector` is currently pointing in.
 ///
 /// This clamps the x and y values to the values -1, 0, or 1.
-fn direction(this: Vector) Vector {
-    return .{ .x = std.math.sign(this.x), .y = std.math.sign(this.y) };
+fn direction(vec: Vector) Vector {
+    return .{ .x = std.math.sign(vec.x), .y = std.math.sign(vec.y) };
 }
 
-pub fn speedUp(this: Vector) Vector {
-    return this.add(this.direction());
+/// Increases the speed of `vec` by one unit.
+pub fn speedUp(vec: Vector) Vector {
+    return vec.add(vec.direction());
 }
 
-pub fn slowDown(this: Vector) Vector {
-    const dir = this.sub(this.direction());
-    return if (dir.x == 0 and dir.y == 0) this.scale(-1) else dir;
+/// Decreases the speed of `vec` by one unit. If this makes it zero, it turns around instead.
+pub fn slowDown(vec: Vector) Vector {
+    const dir = vec.sub(vec.direction());
+    return if (dir.x == 0 and dir.y == 0) vec.scale(-1) else dir;
 }
 
-/// Returns the sum of `this` and `right` as a new vector.
-pub fn add(this: Vector, right: Vector) Vector {
-    const ret = Vector{ .x = this.x + right.x, .y = this.y + right.y };
+/// Returns the sum of `vec` and `right` as a new vector.
+pub fn add(vec: Vector, right: Vector) Vector {
+    const ret = Vector{ .x = vec.x + right.x, .y = vec.y + right.y };
 
-    if (build_options.max_velocity) |max| {
-        std.debug.assert(std.math.abs(ret.x) <= max);
-        std.debug.assert(std.math.abs(ret.y) <= max);
+    if (build_options.max_velocity) |max_velocity| {
+        if (max_velocity < std.math.abs(ret.x)) @panic("velocity too high");
+        if (max_velocity < std.math.abs(ret.y)) @panic("velocity too high");
     }
 
     return ret;
 }
 
-pub inline fn sub(this: Vector, right: Vector) Vector {
-    return this.add(right.scale(-1));
+pub inline fn sub(vec: Vector, right: Vector) Vector {
+    return vec.add(right.scale(-1));
 }
 
-pub inline fn scale(this: Vector, scalar: i32) Vector {
-    return .{ .x = this.x * scalar, .y = this.y * scalar };
+pub inline fn scale(vec: Vector, scalar: i32) Vector {
+    return .{ .x = vec.x * scalar, .y = vec.y * scalar };
 }
 
 pub const Direction = enum { left, right };
-pub fn rotate(this: Vector, dir: Direction) Vector {
+pub fn rotate(vec: Vector, dir: Direction) Vector {
     return switch (dir) {
-        .left => .{ .x = this.y, .y = -this.x },
-        .right => .{ .x = -this.y, .y = this.x },
+        .left => .{ .x = vec.y, .y = -vec.x },
+        .right => .{ .x = -vec.y, .y = vec.x },
     };
 }
 
 pub fn format(
-    this: Vector,
+    vec: Vector,
     comptime _: []const u8,
     _: std.fmt.FormatOptions,
     writer: anytype,
 ) std.os.WriteError!void {
-    try writer.print("({d},{d})", .{ this.x, this.y });
+    try writer.print("({d},{d})", .{ vec.x, vec.y });
 }
