@@ -1,14 +1,12 @@
-# Labyrinth
+# Princess
 This is my 2d array-programing langauge. It's a WIP.
-
-Your "Minotaur" starts at the upper-left corner of the program `(0,0)` with an initial velocity of one to the right. At the beginning of "round," every minotaur goesmy
 
 ## Commands
 #### Movement
 | Command | # of args | Description | Equivalent to |
 | ------- | --------- | ----------- | ------------- |
-| `|` | 0 | If moving vertically, whitespace; If moving horizontally, spawn another Minotaur and fork. |
-| `-` | 0 | If moving horizontally, whitespace; If moving vertically, spawn another Minotaur fork. |
+| `|` | 0 | No-op; whitespace |
+| `-` | 0 | No-op; whitespace |
 | `>` | 0 | Sets the velocity to 1 right |
 | `<` | 0 | Sets the velocity to 1 left |
 | `^` | 0 | Sets the velocity to 1 up |

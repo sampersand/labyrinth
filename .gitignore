@@ -1,2 +1,3 @@
-main
-main.dSYM
+zig-cache
+zig-out
+zig-docs
