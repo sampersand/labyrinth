@@ -37,6 +37,7 @@ pub fn init(alloc: Allocator, filename: []const u8, source: []const u8) Allocato
 pub fn deinit(maze: *Maze, alloc: Allocator) void {
     for (maze.lines.items) |line| alloc.free(line);
     maze.lines.deinit(alloc);
+    maze.* = undefined;
 }
 
 /// Gets the byte at `pos`. If `pos` is out of bounds, `null` is returned.

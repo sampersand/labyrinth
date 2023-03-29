@@ -21,6 +21,7 @@ pub fn deinit(debugger: *Debugger) void {
     for (debugger.run_each_step.items) |cmd|
         debugger.labyrinth.allocator.destroy(cmd);
     debugger.run_each_step.deinit(debugger.labyrinth.allocator);
+    debugger.* = undefined;
 }
 
 pub fn run(dbg: *Debugger) !void {

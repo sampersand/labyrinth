@@ -72,6 +72,7 @@ pub fn createLabyrinth(cla: *CommandLineArgs) !Labyrinth {
 
 pub fn deinit(cla: *CommandLineArgs) void {
     cla.iter.deinit();
+    cla.* = undefined;
 }
 
 // zig fmt: off

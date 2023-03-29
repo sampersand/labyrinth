@@ -41,8 +41,8 @@ pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!*Minotaur {
 
     return minotaur;
 }
-
-pub fn deinitNotDestroyThough(minotaur: *Minotaur) void {
+/// Deinitializes the minotaur and all associated items.
+pub fn deinit(minotaur: *Minotaur) void {
     switch (minotaur.mode) {
         .string => |ary| ary.deinit(minotaur.allocator),
         else => {},
@@ -51,12 +51,10 @@ pub fn deinitNotDestroyThough(minotaur: *Minotaur) void {
     for (minotaur.stack.items) |item|
         item.deinit(minotaur.allocator);
     minotaur.stack.deinit(minotaur.allocator);
-}
 
-/// Deinitializes the minotaur and all associated items.
-pub fn deinit(minotaur: *Minotaur) void {
-    minotaur.deinitNotDestroyThough();
-    minotaur.allocator.destroy(minotaur);
+    const alloc = minotaur.allocator;
+    minotaur.* = undefined;
+    alloc.destroy(minotaur);
 }
 
 pub fn clone(minotaur: *const Minotaur) Allocator.Error!*Minotaur {

@@ -60,6 +60,8 @@ pub fn deinit(labyrinth: *Labyrinth) void {
 
     labyrinth.minotaurs.deinit(labyrinth.allocator);
     labyrinth.timelines.deinit(labyrinth.allocator);
+
+    labyrinth.* = undefined;
 }
 
 pub fn format(
@@ -82,6 +84,7 @@ pub fn format(
     }
     try writer.writeAll("])");
 }
+
 pub fn addTimeline(labyrinth: *Labyrinth, minotaur: *Minotaur) Allocator.Error!usize {
     const id = labyrinth.timelines.items.len;
     try labyrinth.timelines.append(labyrinth.allocator, minotaur);
