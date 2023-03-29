@@ -209,37 +209,13 @@ pub fn mod(value: Value, alloc: Allocator, rhs: Value) MathError!Value {
 }
 
 pub fn cmp(value: Value, rhs: Value) IntType {
-    _ = value;
-    _ = rhs;
-    // switch (value.classify()) {
-    //     .int => |l| switch (rhs.classify()) {
-    //         .int => |r| return Value.from(l - r),
-    //         .ary => |a| {
-    //             var ary = try Array.initCapacity(alloc, a.len());
-    //             for (a.eles.items) |value|
-    //                 ary.push(alloc, try value.mapIt(alloc, value, func)) catch unreachable;
-    //             return Value.from(ary);
-    //         },
-    //     },
-    //     .ary => |a| switch (rhs.classify()) {
-    //         .int => {
-    //             var ary = try Array.initCapacity(alloc, a.len());
-    //             for (a.eles.items) |value|
-    //                 ary.push(alloc, try value.mapIt(alloc, rhs, func)) catch unreachable;
-    //             return Value.from(ary);
-    //         },
-    //         .ary => |r| {
-    //             if (a.len() != r.len()) return error.ArrayLengthMismatch;
-    //             var ary = try Array.initCapacity(alloc, a.len());
-
-    //             for (a.eles.items) |lvalue, i|
-    //                 ary.push(alloc, try lvalue.mapIt(alloc, r.eles.items[i], func)) catch unreachable;
-    //             return Value.from(ary);
-    //         },
-    //     },
-    // }
-
-    @panic("todo");
+    switch (value.classify()) {
+        .int => |l| switch (rhs.classify()) {
+            .int => |r| return std.math.sign(l - r),
+            else => @panic("todo"),
+        },
+        else => @panic("todo"),
+    }
 }
 
 pub fn chr(value: Value, alloc: Allocator) Allocator.Error!Value {

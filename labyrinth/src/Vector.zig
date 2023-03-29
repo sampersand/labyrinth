@@ -56,15 +56,20 @@ pub fn add(vec: Vector, right: Vector) Vector {
     return ret;
 }
 
+/// Returns `right` subtracted from `vec.`
 pub inline fn sub(vec: Vector, right: Vector) Vector {
     return vec.add(right.scale(-1));
 }
 
-pub inline fn scale(vec: Vector, scalar: i32) Vector {
+/// Returns `vec` scaled up by `scalar`.
+pub inline fn scale(vec: Vector, scalar: VecInt) Vector {
     return .{ .x = vec.x * scalar, .y = vec.y * scalar };
 }
 
+/// The direction to rotate.
 pub const Direction = enum { left, right };
+
+/// Returns a `vec` rotated by `dir`.
 pub fn rotate(vec: Vector, dir: Direction) Vector {
     return switch (dir) {
         .left => .{ .x = vec.y, .y = -vec.x },
@@ -72,6 +77,7 @@ pub fn rotate(vec: Vector, dir: Direction) Vector {
     };
 }
 
+/// Prints `vec` to stdout.
 pub fn format(
     vec: Vector,
     comptime _: []const u8,

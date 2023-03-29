@@ -44,7 +44,7 @@ pub fn initCapacity(alloc: Allocator, cap: usize) Allocator.Error!*Minotaur {
 /// Deinitializes the minotaur and all associated items.
 pub fn deinit(minotaur: *Minotaur) void {
     switch (minotaur.mode) {
-        .string => |ary| ary.deinit(minotaur.allocator),
+        .string => |ary| ary.decrement(minotaur.allocator),
         else => {},
     }
 
@@ -397,7 +397,7 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         .chr => ret = try minotaur.args[0].chr(minotaur.allocator),
         .len => {
             var ary = try minotaur.args[0].toArray(minotaur.allocator);
-            defer ary.deinit(minotaur.allocator);
+            defer ary.decrement(minotaur.allocator);
 
             ret = Value.from(std.math.cast(IntType, ary.len()) orelse return error.IntOutOfBounds);
         },
