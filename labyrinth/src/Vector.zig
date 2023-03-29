@@ -5,14 +5,14 @@
 const std = @import("std");
 const build_options = @import("build-options");
 
-const VectorInt = std.meta.Int(.signed, build_options.vector_bits);
+pub const VecInt = std.meta.Int(.signed, build_options.vector_bits);
 const Vector = @This();
 
 /// The x coordinate of the vector.
-x: VectorInt = 0,
+x: VecInt = 0,
 
 /// The y coordinate of the vector.
-y: VectorInt = 0,
+y: VecInt = 0,
 
 /// A Vector that points directly upwards.
 pub const Up = Vector{ .y = -1 };

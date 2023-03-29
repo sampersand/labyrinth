@@ -259,6 +259,8 @@ fn foreign(minotaur: *Minotaur, labyrinth: *Labyrinth, function: ForeignFunction
             labyrinth.allocator,
             labyrinth.maze.filename,
         ))),
+        .print_maze => try labyrinth.printMaze(labyrinth.stdout.writer()),
+        .print_minotaurs => try labyrinth.printMinotaurs(labyrinth.stdout.writer()),
     }
 }
 
@@ -330,6 +332,20 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         .jump => try minotaur.jumpn(minotaur.args[0]),
         .randdir => minotaur.velocity = randomVelocity(&labyrinth.rng),
 
+        .get_at => {
+            const x = try castInt(u32, try minotaur.args[0].toInt());
+            const y = try castInt(u32, try minotaur.args[1].toInt());
+            ret = Value.from(@as(IntType, labyrinth.maze.get(.{ .x = x, .y = y }) orelse 0));
+        },
+        .set_at => {
+            const x = try castInt(u32, try minotaur.args[0].toInt());
+            const y = try castInt(u32, try minotaur.args[1].toInt());
+            try labyrinth.maze.set(
+                labyrinth.allocator,
+                .{ .x = x, .y = y },
+                try castInt(u8, try minotaur.args[2].toInt()),
+            );
+        },
         // Conditional Movement.
         .ifl => if (!minotaur.args[0].isTruthy()) {
             minotaur.velocity = minotaur.velocity.rotate(.left);
@@ -353,7 +369,7 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         // Misc
         .sleep1 => minotaur.sleep_duration = 1,
         .sleep => minotaur.sleep_duration = try castInt(usize, try minotaur.args[0].toInt()),
-        .inccolour => minotaur.colour +%= 1,
+        .getcolour => ret = Value.from(minotaur.colour),
         .setcolour => minotaur.colour = @bitCast(u8, @truncate(i8, try minotaur.args[0].toInt())),
         .foreign => {
             const func = std.meta.intToEnum(ForeignFunction, try minotaur.args[0].toInt()) catch return error.UnknownForeignFunction;
@@ -391,23 +407,23 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         .tos => ret = Value.from(try minotaur.args[0].toArray(minotaur.allocator)),
         .head => {
             const ary = try minotaur.args[0].toArray(minotaur.allocator);
-            defer ary.deinit(minotaur.allocator);
+            defer ary.decrement(minotaur.allocator);
             var iter = ary.iter();
             ret = (iter.next() orelse return error.EmptyArray).clone();
         },
         .tail => {
             const ary = try minotaur.args[0].toArray(minotaur.allocator);
-            defer ary.deinit(minotaur.allocator);
+            defer ary.decrement(minotaur.allocator);
             var next = ary.next orelse return error.EmptyArray;
             next.increment();
             ret = Value.from(next);
         },
         .cons => {
             const begin = try minotaur.args[1].toArray(minotaur.allocator);
-            errdefer begin.deinit(minotaur.allocator);
+            defer begin.decrement(minotaur.allocator);
 
             const end = try minotaur.args[0].toArray(minotaur.allocator);
-            errdefer end.deinit(minotaur.allocator);
+            defer end.decrement(minotaur.allocator);
 
             ret = Value.from(try begin.cons(minotaur.allocator, end));
         },

@@ -1,5 +1,6 @@
 const std = @import("std");
 const Labyrinth = @import("Labyrinth.zig");
+const Allocator = std.mem.Allocator;
 const MinotaurId = Labyrinth.MinotaurId;
 const utils = @import("utils.zig");
 const Debugger = @This();
@@ -7,35 +8,50 @@ const Coordinate = @import("Coordinate.zig");
 const Vector = @import("Vector.zig");
 
 labyrinth: *Labyrinth,
+run_each_step: std.ArrayListUnmanaged(*Command) = .{},
 command: Command = Command.noop,
 
-pub fn init(labyrinth: *Labyrinth) Debugger {
+pub fn init(labyrinth: *Labyrinth) !Debugger {
+    // var run_each_step = try std.ArrayListUnmanaged(*Command).initCapacity(labyrinth.allocator, 1);
+
     return .{ .labyrinth = labyrinth };
+}
+
+pub fn deinit(debugger: *Debugger) void {
+    for (debugger.run_each_step.items) |cmd|
+        debugger.labyrinth.allocator.destroy(cmd);
+    debugger.run_each_step.deinit(debugger.labyrinth.allocator);
 }
 
 pub fn run(dbg: *Debugger) !void {
     const stdout = std.io.getStdOut().writer();
     var stdin = std.io.getStdIn().reader();
     var line_buf: [2048]u8 = undefined;
+    var context: Command.ParseContext = undefined;
 
-    while (true) {
-        try stdout.writeAll("> ");
-        try std.io.getStdOut().sync();
-
-        const line = stdin.readUntilDelimiter(&line_buf, '\n') catch |err| switch (err) {
-            error.StreamTooLong => {
-                try stdout.print("input too large (cap={d})\n", .{@typeInfo(@TypeOf(line_buf)).Array.len});
-                continue;
-            },
-            else => {
-                try utils.eprintln("unable to read from stdin: {}; exiting", .{err});
-                return;
-            },
-        };
-
-        var context: Command.ParseContext = undefined;
+    while (!dbg.labyrinth.isDone()) {
         _ = b: {
-            if (Command.parse(line, &context) catch |e| break :b e) |cmd| dbg.command = cmd;
+            for (dbg.run_each_step.items) |cmd| {
+                cmd.run(dbg) catch |e| break :b e;
+            }
+
+            try stdout.writeAll("> ");
+            try std.io.getStdOut().sync();
+
+            const line = stdin.readUntilDelimiter(&line_buf, '\n') catch |err| switch (err) {
+                error.StreamTooLong => {
+                    try stdout.print("input too large (cap={d})\n", .{@typeInfo(@TypeOf(line_buf)).Array.len});
+                    continue;
+                },
+                else => {
+                    try utils.eprintln("unable to read from stdin: {}; exiting", .{err});
+                    return;
+                },
+            };
+
+            const cmdOpt = Command.parse(dbg.labyrinth.allocator, line, &context) catch |e| break :b e;
+
+            if (cmdOpt) |cmd| dbg.command = cmd;
             if (dbg.command == Command.quit) break;
             break :b dbg.command.run(dbg);
         } catch {
@@ -43,9 +59,49 @@ pub fn run(dbg: *Debugger) !void {
         };
     }
 }
+pub const ArgParser = struct {
+    iter: std.mem.TokenIterator(u8),
+    ctx: *Command.ParseContext,
+    cmd_name: []const u8,
+
+    pub fn initFromOld(argp: *ArgParser) !ArgParser {
+        const cmd_name = argp.iter.next() orelse return argp.ctx.fail(error.TooFewArgs, argp.cmd_name);
+        return .{ .ctx = argp.ctx, .iter = argp.iter, .cmd_name = cmd_name };
+    }
+
+    pub fn init(line: []const u8, ctx: *Command.ParseContext) ?ArgParser {
+        var iter = std.mem.tokenize(u8, line, &std.ascii.whitespace);
+        const cmd_name = iter.next() orelse return null;
+        return .{ .ctx = ctx, .iter = iter, .cmd_name = cmd_name };
+    }
+
+    pub fn next(argp: *ArgParser) ?[]const u8 {
+        return argp.iter.next();
+    }
+
+    pub fn nextReq(argp: *ArgParser) ![]const u8 {
+        return argp.next() orelse return argp.ctx.fail(error.TooFewArgs, argp.cmd_name);
+    }
+
+    pub fn read(argp: *ArgParser, comptime T: type) !T {
+        return try argp.readOrNull(T) orelse argp.ctx.fail(error.TooFewArgs, argp.cmd_name);
+    }
+
+    pub fn readOr(argp: *ArgParser, comptime T: type, default: T) !T {
+        return try argp.readOrNull(T) orelse default;
+    }
+
+    pub fn readOrNull(argp: *ArgParser, comptime T: type) !?T {
+        return switch (T) {
+            Coordinate => .{ .x = try argp.read(Coordinate.CoordInt), .y = try argp.read(Coordinate.CoordInt) },
+            Vector => .{ .x = try argp.read(Vector.VecInt), .y = try argp.read(Vector.VecInt) },
+            else => std.fmt.parseInt(T, argp.next() orelse return null, 10) catch |err| argp.ctx.fail(error.CantParseInt, err),
+        };
+    }
+};
 
 const Command = union(enum) {
-    pub const ParseError = error{ UnknownCommandName, TooFewArgs, CantParseInt };
+    pub const ParseError = error{ UnknownCommandName, TooFewArgs, CantParseInt } || Allocator.Error;
     pub const ParseContext = union(enum) {
         UnknownCommandName: []const u8,
         TooFewArgs: []const u8,
@@ -56,40 +112,6 @@ const Command = union(enum) {
             return err;
         }
     };
-    const ArgParser = struct {
-        iter: std.mem.TokenIterator(u8),
-        ctx: *ParseContext,
-        cmd_name: []const u8,
-
-        fn init(line: []const u8, ctx: *ParseContext) ?ArgParser {
-            var iter = std.mem.tokenize(u8, line, &std.ascii.whitespace);
-            const cmd_name = iter.next() orelse return null;
-            return .{ .ctx = ctx, .iter = iter, .cmd_name = cmd_name };
-        }
-
-        fn next(argp: *ArgParser) ?[]const u8 {
-            return argp.iter.next();
-        }
-
-        fn nextReq(argp: *ArgParser) ParseError![]const u8 {
-            return argp.next() orelse return argp.ctx.fail(error.TooFewArgs, argp.cmd_name);
-        }
-
-        fn read(argp: *ArgParser, comptime T: type) ParseError!T {
-            return Command.read(T, try argp.nextReq(), argp.ctx);
-        }
-
-        fn readOr(argp: *ArgParser, comptime T: type, default: T) ParseError!T {
-            return if (argp.next()) |arg|
-                std.fmt.parseInt(T, arg, 10) catch |err| argp.ctx.fail(error.CantParseInt, err)
-            else
-                default;
-        }
-    };
-
-    fn read(comptime T: type, arg: []const u8, ctx: *ParseContext) ParseError!T {
-        return std.fmt.parseInt(T, arg, 10) catch |err| ctx.fail(error.CantParseInt, err);
-    }
 
     // zig fmt: off
     const Names = enum {
@@ -101,79 +123,100 @@ const Command = union(enum) {
         step, s,
         stepm, sm,
         help,
+        sticky, sk,
         @"print-maze", pr,
     };
     // zig fmt: on
 
-    dump_all: void,
-    dump_minotaur: MinotaurId,
+    dump: ?MinotaurId,
     jump_to: struct { id: MinotaurId, position: ?Coordinate = null, velocity: ?Vector = null },
-    step_all: MinotaurId,
-    step_one: struct { minotaur: MinotaurId, amount: usize },
+    step: struct { minotaur: ?MinotaurId = null, amount: usize },
     noop: void,
     help: void,
     quit: void,
+    sticky: *Command,
     print: struct { maze: bool, minotaurs: bool },
 
-    fn parse(line: []const u8, ctx: *ParseContext) ParseError!?Command {
+    fn parse(alloc: Allocator, line: []const u8, ctx: *ParseContext) ParseError!?Command {
         var args = ArgParser.init(line, ctx) orelse return null;
+        return try Command.parseWithParser(alloc, &args, ctx);
+    }
 
+    fn parseWithParser(alloc: Allocator, args: *ArgParser, ctx: *ParseContext) ParseError!Command {
         const cmd = std.meta.stringToEnum(Names, args.cmd_name) orelse
             return ctx.fail(error.UnknownCommandName, args.cmd_name);
 
         return switch (cmd) {
-            .dump, .d => if (args.next()) |arg| .{ .dump_minotaur = try read(usize, arg, ctx) } else .dump_all,
+            .dump, .d => .{ .dump = try args.readOrNull(MinotaurId) },
             .quit, .q => .quit,
-            .step, .s => .{ .step_all = try args.readOr(usize, 1) },
-            .stepm, .sm => .{ .step_one = .{
-                .minotaur = try args.read(usize),
+            .step, .s => .{ .step = .{ .amount = try args.readOr(usize, 1) } },
+            .stepm, .sm => .{ .step = .{
+                .minotaur = try args.read(MinotaurId),
                 .amount = try args.readOr(usize, 1),
             } },
             .jump, .j => .{ .jump_to = .{
-                .id = try args.read(usize),
-                .position = .{ .x = try args.read(u32), .y = try args.read(u32) },
-                .velocity = .{ .x = try args.read(i32), .y = try args.read(i32) },
+                .id = try args.read(MinotaurId),
+                .position = try args.read(Coordinate),
+                .velocity = try args.read(Vector),
             } },
             .@"set-position" => .{ .jump_to = .{
-                .id = try args.read(usize),
-                .position = .{ .x = try args.read(u32), .y = try args.read(u32) },
+                .id = try args.read(MinotaurId),
+                .position = try args.read(Coordinate),
             } },
             .@"set-velocity" => .{ .jump_to = .{
-                .id = try args.read(usize),
-                .velocity = .{ .x = try args.read(i32), .y = try args.read(i32) },
+                .id = try args.read(MinotaurId),
+                .velocity = try args.read(Vector),
+            } },
+            .sticky, .sk => .{ .sticky = b: {
+                var ptr = try alloc.create(Command);
+                errdefer alloc.destroy(ptr);
+
+                var argp2 = try args.initFromOld();
+                ptr.* = try Command.parseWithParser(alloc, &argp2, ctx);
+                break :b ptr;
             } },
             .help => .help,
             .@"print-maze", .pr => .{ .print = .{ .maze = true, .minotaurs = true } },
         };
     }
 
-    pub fn run(cmd: Command, dbg: *Debugger) !void {
-        switch (cmd) {
+    pub fn run(command: Command, dbg: *Debugger) !void {
+        const stdout = dbg.labyrinth.stdout.writer();
+        switch (command) {
+            .quit => unreachable, // should be handled in Debugger.run
             .noop => {},
-            .dump_minotaur => {},
-            .dump_all => try utils.println("{}", .{dbg.labyrinth}),
-            .step_one => {},
-            .step_all => |amnt| {
-                var n = @as(usize, 0);
-                while (n < amnt) : (n += 1) {
-                    try dbg.labyrinth.stepAllMinotaurs();
+            .dump => |id_opt| {
+                if (id_opt) |id| {
+                    try stdout.print("{}\n", .{try dbg.labyrinth.getMinotaur(id)});
+                } else {
+                    try stdout.print("{}\n", .{dbg.labyrinth});
+                }
+            },
+            .step => |step| {
+                if (step.minotaur) |minotaur| {
+                    for (utils.range(step.amount)) |_|
+                        _ = try dbg.labyrinth.tickMinotaur(minotaur);
+                } else {
+                    for (utils.range(step.amount)) |_|
+                        try dbg.labyrinth.stepAllMinotaurs();
                 }
             },
             .print => |info| {
-                const stdout = std.io.getStdOut().writer();
                 if (info.maze) {
                     try dbg.labyrinth.printMaze(stdout);
                     if (info.minotaurs) try stdout.writeByte('\n');
                 }
-                if (info.minotaurs) try dbg.labyrinth.printMinotaurs(stdout);
+
+                if (info.minotaurs)
+                    try dbg.labyrinth.printMinotaurs(stdout);
             },
-            .quit => unreachable, // should be handled in minotaur
-            .jump_to => |j| {
-                var minotaur = try dbg.labyrinth.getMinotaur(j.id);
+            .jump_to => |jmp| {
+                var minotaur = try dbg.labyrinth.getMinotaur(jmp.id);
                 minotaur.is_first = false;
-                if (j.position) |p| minotaur.jumpTo(p);
-                if (j.velocity) |v| minotaur.velocity = v;
+                if (jmp.position) |p| minotaur.jumpTo(p);
+                if (jmp.velocity) |v| minotaur.velocity = v;
             },
+            .sticky => |ptr| try dbg.run_each_step.append(dbg.labyrinth.allocator, ptr),
             .help => try utils.println(
                 \\ commands:
                 \\   d, dump [id] - dumps the minotaur at `id`; dumps the program without id.

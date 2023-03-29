@@ -111,7 +111,7 @@ pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!voi
     std.time.sleep(this.options.sleep_ms * 1_000_000);
     try utils.clearScreen(writer);
     try writer.print("tick {d}\n", .{this.generation});
-    try this.maze.printMaze(this.minotaurs.items, writer);
+    try this.printMaze(writer);
 
     if (this.options.print_minotaurs) {
         try writer.writeAll("\n");
@@ -126,13 +126,21 @@ fn addNewMinotaurs(this: *Labyrinth) Allocator.Error!bool {
 }
 
 fn debugPrintMaze(this: *const Labyrinth) !void {
-    if (!this.options.print_maze) return;
+    if (!this.options.print_maze) {
+        var writer = std.io.getStdOut().writer();
+        if (this.options.print_minotaurs) {
+            try writer.writeAll("\n");
+            for (this.minotaurs.items) |minotaur, i|
+                try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
+        }
+        return;
+    }
     try this.debugPrint(std.io.getStdOut().writer());
     std.time.sleep(this.options.sleep_ms * 1_000_000);
 }
 
 pub fn printMaze(this: *const Labyrinth, writer: anytype) !void {
-    try this.maze.printMaze(this.minotaurs.items, writer);
+    try this.maze.printMaze(.{ .minotaurs = this.minotaurs.items }, writer);
 }
 
 pub fn printMinotaurs(this: *const Labyrinth, writer: anytype) !void {

@@ -3,6 +3,8 @@ const IntType = @import("types.zig").IntType;
 
 pub const ForeignFunction = enum(IntType) {
     program_name,
+    print_maze,
+    print_minotaurs,
 };
 
 pub const Function = enum(u8) {
@@ -22,6 +24,9 @@ pub const Function = enum(u8) {
     str     = '\"',
     ary     = '[',
     ary_end = ']',
+
+    set_at = 'e',
+    get_at = 'E',
 
     // Stack manipulation & Querying
     dup      = '@', // Duplicate the nth element, where n is the (popped) topmost element.
@@ -69,7 +74,7 @@ pub const Function = enum(u8) {
     // Misc
     sleep1    = 'Z', // Sleep for 1 tick.
     sleep     = 'z', // Sleep for the next n ticks.
-    inccolour = 'U', // Increments the colour for the current minotaur.
+    getcolour = 'U', // Gets the colour for the current minotaur
     setcolour = 'u', // Sets the colour to the topmost stack for the current minotaur.
     foreign   = 'f', // Does a foreign function.
 
@@ -130,7 +135,7 @@ pub const Function = enum(u8) {
     pub fn arity(func: Function) usize {
         return switch (func) {
             .int0, .int1, .int2, .int3, .int4, .int5, .int6, .int7, .int8, .int9 => 0,
-            .dup1, .dup2, .pop2, .swap, .stacklen, .inccolour, .branchl, .branchr, .branch => 0,
+            .dup1, .dup2, .pop2, .swap, .stacklen, .getcolour, .branchl, .branchr, .branch => 0,
             .moveh, .movev, .up, .down, .left, .right, .speedup, .slowdown, .sleep1 => 0,
             .dump, .dumpq, .quit0, .gets, .str, .jump1, .randdir, .rand, .spawnl, .spawnr => 0,
 
@@ -143,6 +148,9 @@ pub const Function = enum(u8) {
             .cons => 2,
             .get => 3,
             .set => 4,
+
+            .set_at => 3,
+            .get_at => 2,
 
             .foreign => 1,
 

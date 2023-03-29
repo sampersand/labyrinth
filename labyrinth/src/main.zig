@@ -21,7 +21,8 @@ pub fn main() !u8 {
     // if (true) return 0;
 
     if (args.options.debug) {
-        var debugger = Debugger.init(&labyrinth);
+        var debugger = try Debugger.init(&labyrinth);
+        defer debugger.deinit();
         try debugger.run();
         return 0;
     } else {

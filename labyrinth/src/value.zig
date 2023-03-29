@@ -20,7 +20,7 @@ _data: DataType,
 /// Creates a new value from `val`.
 pub fn from(ty: anytype) Value {
     return switch (@TypeOf(ty)) {
-        IntType, comptime_int => .{ ._data = (@intCast(DataType, ty) << 1) | 1 },
+        IntType, comptime_int, u8 => .{ ._data = (@intCast(DataType, ty) << 1) | 1 },
         bool => Value.from(@as(IntType, if (ty) 1 else 0)),
         *Array => .{ ._data = @intCast(DataType, @ptrToInt(ty)) },
         else => @compileError("Value.from error: " ++ @typeName(@TypeOf(ty))),

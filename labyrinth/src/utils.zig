@@ -5,6 +5,10 @@ pub inline fn unlikely(b: bool) bool {
     return b;
 }
 
+pub inline fn range(len: usize) []const void {
+    return @as([*]void, undefined)[0..len];
+}
+
 pub const FmtEnum = enum {
     s,
     d,
@@ -22,7 +26,7 @@ pub fn clearScreen(writer: anytype) std.os.WriteError!void {
     try writer.writeAll("\x1B[1;1H\x1B[2J");
 }
 
-pub inline fn safeIndex(slice: anytype, idx: usize) ?@TypeOf(slice[0]) {
+pub inline fn safeIndex(slice: anytype, idx: anytype) ?@TypeOf(slice[0]) {
     return if (idx < slice.len) slice[idx] else null;
 }
 

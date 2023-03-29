@@ -22,15 +22,32 @@ pub fn init(alloc: Allocator) !CommandLineArgs {
     return CommandLineArgs{ .alloc = alloc, .iter = iter, .options = options };
 }
 
-pub fn createLabyrinth(cla: CommandLineArgs) !Labyrinth {
+fn parseShebang(cla: *CommandLineArgs, file: *[]const u8) !void {
+    if (file.len < 2 or file.*[0] != '#' or file.*[1] != '!')
+        return;
+
+    _ = cla; // todo: Actually parse arguments
+
+    while (file.len != 0 and file.*[0] != '\n') {
+        file.* = file.*[1..];
+    }
+
+    if (file.len != 0 and file.*[0] == '\n') file.* = file.*[1..];
+}
+
+pub fn createLabyrinth(cla: *CommandLineArgs) !Labyrinth {
     var maze: Maze = undefined;
 
     if (cla.filename) |filename| {
         var contents = try utils.readFile(cla.alloc, filename);
-        defer cla.alloc.free(contents);
+        const orig_contents = contents;
+        defer cla.alloc.free(orig_contents);
+
+        try cla.parseShebang(&contents);
         maze = try Maze.init(cla.alloc, filename, contents);
-    } else if (cla.expr) |expr| {
-        maze = try Maze.init(cla.alloc, "-e", expr);
+    } else if (cla.expr) |*expr| {
+        try cla.parseShebang(expr);
+        maze = try Maze.init(cla.alloc, "-e", expr.*);
     } else {
         cla.stop(.err, "either `-e` or a filename must be given", .{});
     }
