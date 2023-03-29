@@ -11,6 +11,9 @@ filename: []const u8,
 lines: std.ArrayListUnmanaged([]u8),
 max_x: usize = 0,
 
+/// Creates a new Maze with the given `filename` and `source` code.
+///
+/// The `Maze.deinit` function must be called to free the memory associated with it.
 pub fn init(alloc: Allocator, filename: []const u8, source: []const u8) Allocator.Error!Maze {
     var maze = Maze{
         .filename = filename,
@@ -30,15 +33,20 @@ pub fn init(alloc: Allocator, filename: []const u8, source: []const u8) Allocato
     return maze;
 }
 
+/// Deinitializes the maze. This does not free `maze` itself, but just the data associated.
 pub fn deinit(maze: *Maze, alloc: Allocator) void {
     for (maze.lines.items) |line| alloc.free(line);
     maze.lines.deinit(alloc);
 }
 
+/// Gets the byte at `pos`. If `pos` is out of bounds, `null` is returned.
 pub fn get(maze: *const Maze, pos: Coordinate) ?u8 {
     return utils.safeIndex(utils.safeIndex(maze.lines.items, pos.y) orelse return null, pos.x);
 }
 
+/// Sets the position `pos` to `val`, (re)allocating lines if needed.
+///
+/// Extra lines are empty, and padding on a line is `\0`.
 pub fn set(maze: *Maze, alloc: Allocator, pos: Coordinate, val: u8) Allocator.Error!void {
     // Add more lines if needed
     if (maze.lines.items.len <= pos.y) {
@@ -80,13 +88,19 @@ fn printXHeadings(writer: anytype, max_x: usize, max_y_len: usize) std.os.WriteE
     }
 }
 
+/// Options for `printMaze`.
 pub const PrintOptions = struct {
+    /// The minotaurs whose positions will be printed.
     minotaurs: []*const Minotaur = &.{},
+    /// Whether to print out the filename.
     filename: bool = true,
+    /// Whether to print the axes with their coordinates.
     axes: bool = true,
+    /// Whether to print the tails of minotaurs; If false, only heads are printed.
     tails: bool = true,
 };
 
+/// Prints out `maze` to `writer` with the given options.
 pub fn printMaze(maze: *const Maze, opts: PrintOptions, writer: anytype) std.os.WriteError!void {
     const Cursor = struct {
         idx: usize,
