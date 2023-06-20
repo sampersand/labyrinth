@@ -1,0 +1,16 @@
+i9$>.2%Kvd,1=NQ
+   ^./2-<
+
+i    convert argument from str to int
+9$   stack is now `[9, arg]`
+.    stack is now `[9, arg, arg]`
+2%   stack is now `[9, arg, isodd]`
+Kv   if isodd, go forward, else go down.
+/2.  stack is now `[9, arg/2, arg/2]`
+^>   start over at the `.` above
+,    stack is now `[..., <previous division, or 9 input was 1>]`
+1=   stack is now `[..., <previous division was 1>]`
+NQ   print out top of stack, quit
+
+i1$>.2%Kvd,1=NQ
+   ^./2-<

@@ -42,7 +42,8 @@ pub fn deinit(maze: *Maze, alloc: Allocator) void {
 
 /// Gets the byte at `pos`. If `pos` is out of bounds, `null` is returned.
 pub fn get(maze: *const Maze, pos: Coordinate) ?u8 {
-    return utils.safeIndex(utils.safeIndex(maze.lines.items, pos.y) orelse return null, pos.x);
+    const line = utils.safeIndex(maze.lines.items, pos.y) orelse return null;
+    return utils.safeIndex(line, pos.x);
 }
 
 /// Sets the position `pos` to `val`, (re)allocating lines if needed.
@@ -118,7 +119,7 @@ pub fn printMaze(maze: *const Maze, opts: PrintOptions, writer: anytype) std.os.
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    var indices = std.ArrayList(Cursor).initCapacity(arena.allocator(), opts.minotaurs.len) catch @panic("oops?");
+    var indices = std.ArrayList(Cursor).initCapacity(arena.allocator(), opts.minotaurs.len) catch @panic("too many minotaurs?");
 
     if (opts.filename) {
         try writer.print("file: {s}\n", .{maze.filename});

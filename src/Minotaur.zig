@@ -65,7 +65,7 @@ pub fn clone(minotaur: *const Minotaur) Allocator.Error!*Minotaur {
 
     new.positions = minotaur.positions;
     new.velocity = minotaur.velocity;
-    new.colour = minotaur.colour +% 1;
+    new.colour = minotaur.colour +% 3;
 
     new.mode = minotaur.mode;
     new.sleep_duration = minotaur.sleep_duration;
