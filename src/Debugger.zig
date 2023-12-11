@@ -14,7 +14,7 @@ command: Command = Command.noop,
 pub fn init(labyrinth: *Labyrinth) !Debugger {
     // var run_each_step = try std.ArrayListUnmanaged(*Command).initCapacity(labyrinth.allocator, 1);
 
-    return .{ .labyrinth = labyrinth };
+    return Debugger{ .labyrinth = labyrinth };
 }
 
 pub fn deinit(debugger: *Debugger) void {
@@ -31,33 +31,37 @@ pub fn run(dbg: *Debugger) !void {
     var context: Command.ParseContext = undefined;
 
     while (!dbg.labyrinth.isDone()) {
-        _ = b: {
-            for (dbg.run_each_step.items) |cmd| {
-                cmd.run(dbg) catch |e| break :b e;
-            }
+        _ = stdin;
+        _ = line_buf;
+        _ = context;
+        _ = stdout;
+        // _ = b: {
+        //     for (dbg.run_each_step.items) |cmd| {
+        //         cmd.run(dbg) catch |e| break :b e;
+        //     }
 
-            try stdout.writeAll("> ");
-            try std.io.getStdOut().sync();
+        //     try stdout.writeAll("> ");
+        //     try std.io.getStdOut().sync();
 
-            const line = stdin.readUntilDelimiter(&line_buf, '\n') catch |err| switch (err) {
-                error.StreamTooLong => {
-                    try stdout.print("input too large (cap={d})\n", .{@typeInfo(@TypeOf(line_buf)).Array.len});
-                    continue;
-                },
-                else => {
-                    try utils.eprintln("unable to read from stdin: {}; exiting", .{err});
-                    return;
-                },
-            };
+        //     const line = stdin.readUntilDelimiter(&line_buf, '\n') catch |err| switch (err) {
+        //         error.StreamTooLong => {
+        //             try stdout.print("input too large (cap={d})\n", .{@typeInfo(@TypeOf(line_buf)).Array.len});
+        //             continue;
+        //         },
+        //         else => {
+        //             try utils.eprintln("unable to read from stdin: {}; exiting", .{err});
+        //             return;
+        //         },
+        //     };
 
-            const cmdOpt = Command.parse(dbg.labyrinth.allocator, line, &context) catch |e| break :b e;
+        //     const cmdOpt = Command.parse(dbg.labyrinth.allocator, line, &context) catch |e| break :b e;
 
-            if (cmdOpt) |cmd| dbg.command = cmd;
-            if (dbg.command == Command.quit) break;
-            break :b dbg.command.run(dbg);
-        } catch {
-            try utils.eprintln("{}", .{context});
-        };
+        //     if (cmdOpt) |cmd| dbg.command = cmd;
+        //     if (dbg.command == Command.quit) break;
+        //     break :b dbg.command.run(dbg);
+        // } catch {
+        //     try utils.eprintln("{}", .{context});
+        // };
     }
 }
 pub const ArgParser = struct {

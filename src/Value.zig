@@ -20,9 +20,9 @@ _data: DataType,
 /// Creates a new value from `val`.
 pub fn from(ty: anytype) Value {
     return switch (@TypeOf(ty)) {
-        IntType, comptime_int, u8 => .{ ._data = (@intCast(DataType, ty) << 1) | 1 },
+        IntType, comptime_int, u8 => .{ ._data = (@as(DataType, @intCast(ty)) << 1) | 1 },
         bool => Value.from(@as(IntType, if (ty) 1 else 0)),
-        *Array => .{ ._data = @intCast(DataType, @ptrToInt(ty)) },
+        *Array => .{ ._data = @as(DataType, @intCast(@intFromPtr(ty))) },
         else => @compileError("Value.from error: " ++ @typeName(@TypeOf(ty))),
     };
 }
@@ -30,9 +30,9 @@ pub fn from(ty: anytype) Value {
 /// Returns an enum for pattern matching for `value`.
 pub inline fn classify(value: Value) ValueType {
     return if (value._data & 1 == 1) .{
-        .int = @intCast(IntType, value._data >> 1),
+        .int = @as(IntType, @intCast(value._data >> 1)),
     } else .{
-        .ary = @intToPtr(*Array, @intCast(usize, @intCast(u64, value._data))),
+        .ary = @as(*Array, @ptrFromInt(@as(usize, @intCast(@as(u64, @intCast(value._data)))))),
     };
 }
 

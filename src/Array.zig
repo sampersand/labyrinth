@@ -190,7 +190,7 @@ pub fn fromString(alloc: Allocator, string: []const u8) Allocator.Error!*Array {
     while (true) {
         idx -= 1;
         const byte = string[idx];
-        ary = try ary.prependNoIncrement(alloc, Value.from(@intCast(IntType, byte)));
+        ary = try ary.prependNoIncrement(alloc, Value.from(@as(IntType, @intCast(byte))));
         if (idx == 0) break;
     }
 

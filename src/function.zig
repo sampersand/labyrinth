@@ -122,7 +122,7 @@ pub const Function = enum(u8) {
 
     // Gets the byte representation of `func`.
     pub inline fn toByte(func: Function) u8 {
-        return @enumToInt(func);
+        return @intFromEnum(func);
     }
 
     pub const ValidateError = error{NotAValidFunction};

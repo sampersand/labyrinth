@@ -2,9 +2,7 @@ const std = @import("std");
 const Value = @import("Value.zig");
 const Allocator = std.mem.Allocator;
 
-pub const ArrayClassification = union(enum) {
-    string: std.meta.fieldInfo(std.meta.fieldInfo(Array, "data").a)
-};
+pub const ArrayClassification = union(enum) { string: std.meta.fieldInfo(std.meta.fieldInfo(Array, "data").a) };
 
 pub const Array = extern struct {
     comptime {

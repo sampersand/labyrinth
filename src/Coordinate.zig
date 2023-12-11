@@ -18,7 +18,7 @@ pub const MoveError = error{CoordinateOutOfBounds};
 
 /// Moves the `coord` by `by` units, returning a `MoveError` if there was a problem with it.
 pub fn moveBy(coord: Coordinate, by: Vector) MoveError!Coordinate {
-    return .{
+    return Coordinate{
         .x = std.math.cast(CoordInt, @as(i64, coord.x) + @as(i64, by.x)) orelse return error.CoordinateOutOfBounds,
         .y = std.math.cast(CoordInt, @as(i64, coord.y) + @as(i64, by.y)) orelse return error.CoordinateOutOfBounds,
     };

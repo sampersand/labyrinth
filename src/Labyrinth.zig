@@ -48,7 +48,7 @@ pub fn init(alloc: Allocator, maze: Maze, options: Options) Allocator.Error!Laby
         .timelines = timelines,
         .options = options,
         .stdout = std.io.getStdOut(),
-        .rng = std.rand.DefaultPrng.init(@intCast(u64, std.time.milliTimestamp())),
+        .rng = std.rand.DefaultPrng.init(@as(u64, @intCast(std.time.milliTimestamp()))),
     };
 }
 
@@ -78,7 +78,7 @@ pub fn format(
     // }
 
     try writer.writeAll("minotaurs=[");
-    for (this.minotaurs.items) |minotaur, idx| {
+    for (this.minotaurs.items, 0..) |minotaur, idx| {
         if (idx != 0) try writer.writeAll(", ");
         try writer.print("{}", .{minotaur});
     }
@@ -118,7 +118,7 @@ pub fn debugPrint(this: *const Labyrinth, writer: anytype) std.os.WriteError!voi
 
     if (this.options.print_minotaurs) {
         try writer.writeAll("\n");
-        for (this.minotaurs.items) |minotaur, i|
+        for (this.minotaurs.items, 0..) |minotaur, i|
             try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
     }
 }
@@ -133,7 +133,7 @@ fn debugPrintMaze(this: *const Labyrinth) !void {
         var writer = std.io.getStdOut().writer();
         if (this.options.print_minotaurs) {
             try writer.writeAll("\n");
-            for (this.minotaurs.items) |minotaur, i|
+            for (this.minotaurs.items, 0..) |minotaur, i|
                 try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
         }
         return;
@@ -147,7 +147,7 @@ pub fn printMaze(this: *const Labyrinth, writer: anytype) !void {
 }
 
 pub fn printMinotaurs(this: *const Labyrinth, writer: anytype) !void {
-    for (this.minotaurs.items) |minotaur, i|
+    for (this.minotaurs.items, 0..) |minotaur, i|
         try writer.print("minotaur {d}: {}\n", .{ i, minotaur });
 }
 

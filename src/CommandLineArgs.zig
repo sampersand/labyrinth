@@ -107,7 +107,7 @@ fn stopNoPrefix(comptime status: Status, comptime fmt: []const u8, fmt_args: any
 
 fn nextPositional(cla: *CommandLineArgs, option: Option) []const u8 {
     return cla.iter.next() orelse {
-        cla.stop(.err, "missing positional argument for {s}", .{std.meta.tagName(option)});
+        cla.stop(.err, "missing positional argument for {s}", .{@tagName(option)});
     };
 }
 

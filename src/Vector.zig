@@ -48,9 +48,9 @@ pub fn slowDown(vec: Vector) Vector {
 pub fn add(vec: Vector, right: Vector) Vector {
     const ret = Vector{ .x = vec.x + right.x, .y = vec.y + right.y };
 
-    if (build_options.max_velocity) |max_velocity| {
-        if (max_velocity < std.math.abs(ret.x)) @panic("velocity too high");
-        if (max_velocity < std.math.abs(ret.y)) @panic("velocity too high");
+    if (build_options.max_velocity != 0) {
+        if (build_options.max_velocity < std.math.abs(ret.x)) @panic("velocity too high");
+        if (build_options.max_velocity < std.math.abs(ret.y)) @panic("velocity too high");
     }
 
     return ret;

@@ -15,7 +15,7 @@ pub fn toArray(int: IntType, alloc: Allocator) Allocator.Error!*Array {
     while (true) {
         idx -= 1;
         const byte = buf[idx];
-        ary = try ary.prependNoIncrement(alloc, Value.from(@intCast(IntType, byte)));
+        ary = try ary.prependNoIncrement(alloc, Value.from(@as(IntType, @intCast(byte))));
         if (idx == 0) break;
     }
 

@@ -144,7 +144,7 @@ pub fn format(
         .{ minotaur.positions[0], minotaur.velocity, minotaur.colour },
     );
 
-    for (minotaur.stack.items) |*value, idx| {
+    for (minotaur.stack.items, 0..) |*value, idx| {
         if (idx != 0) try writer.writeAll(", ");
         try writer.print("{}", .{value});
     }
@@ -185,7 +185,7 @@ pub fn tick(minotaur: *Minotaur, labyrinth: *Labyrinth) PlayError!void {
         .string => |*ary| {
             // If it's not the end quote, then just push it to the end.
             if (byte != comptime Function.str.toByte()) {
-                ary.* = try ary.*.prependNoIncrement(minotaur.allocator, Value.from(@intCast(IntType, byte)));
+                ary.* = try ary.*.prependNoIncrement(minotaur.allocator, Value.from(@as(IntType, @intCast(byte))));
             } else {
                 // It's the closing quote, then push it onto the list of chars and return.
                 try minotaur.push(Value.from(try ary.*.reverse(minotaur.allocator)));
@@ -302,11 +302,11 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
             var cl = try minotaur.cloneRotate(if (function == .branchl) .left else .right);
             errdefer cl.deinit();
             const id = try labyrinth.addTimeline(cl);
-            ret = Value.from(@intCast(IntType, id));
+            ret = Value.from(@as(IntType, @intCast(id)));
         },
         .branch => {
             const id = try labyrinth.addTimeline(try minotaur.clone());
-            ret = Value.from(@intCast(IntType, id));
+            ret = Value.from(@as(IntType, @intCast(id)));
         },
         .travel, .travelq => {
             const id = try castInt(usize, try minotaur.args[0].toInt());
@@ -368,7 +368,7 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         .sleep1 => minotaur.sleep_duration = 1,
         .sleep => minotaur.sleep_duration = try castInt(usize, try minotaur.args[0].toInt()),
         .getcolour => ret = Value.from(minotaur.colour),
-        .setcolour => minotaur.colour = @bitCast(u8, @truncate(i8, try minotaur.args[0].toInt())),
+        .setcolour => minotaur.colour = @as(u8, @bitCast(@as(i8, @truncate(try minotaur.args[0].toInt())))),
         .foreign => {
             const func = std.meta.intToEnum(ForeignFunction, try minotaur.args[0].toInt()) catch return error.UnknownForeignFunction;
             try minotaur.foreign(labyrinth, func);

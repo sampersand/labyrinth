@@ -26,8 +26,8 @@ pub fn init(alloc: Allocator, filename: []const u8, source: []const u8) Allocato
         var dup = try alloc.dupe(u8, line);
         errdefer alloc.free(dup);
 
-        maze.max_x = std.math.max(dup.len, maze.max_x);
-        try maze.lines.append(alloc, @ptrCast([]u8, dup));
+        maze.max_x = @max(dup.len, maze.max_x);
+        try maze.lines.append(alloc, @as([]u8, @ptrCast(dup)));
     }
 
     return maze;
@@ -67,7 +67,7 @@ pub fn set(maze: *Maze, alloc: Allocator, pos: Coordinate, val: u8) Allocator.Er
     if (line.len <= pos.x) {
         const size = line.len;
         line.* = try alloc.realloc(line.*, pos.x + 1);
-        std.mem.set(u8, line.*[size..], '\x00');
+        @memset(line.*[size..], '\x00');
     }
 
     line.*[pos.x] = val;
@@ -81,7 +81,7 @@ fn printXHeadings(writer: anytype, max_x: usize, max_y_len: usize) std.os.WriteE
         try writer.writeByteNTimes(' ', max_y_len + repeat_amount);
         var x: u8 = 1;
         while (x <= @divTrunc(max_x, repeat_amount)) : (x += 1) {
-            try writer.writeByteNTimes('0' + (x % 10), std.math.min(
+            try writer.writeByteNTimes('0' + (x % 10), @min(
                 max_x - repeat_amount * x + 1,
                 repeat_amount,
             ));
@@ -109,7 +109,7 @@ pub fn printMaze(maze: *const Maze, opts: PrintOptions, writer: anytype) std.os.
         id: usize,
         age: usize,
         pub fn colour(cursor: @This()) u8 {
-            return @truncate(u8, (cursor.id % 36)) + 16 + 36 * (5 - @truncate(u8, cursor.age));
+            return @as(u8, @truncate((cursor.id % 36))) + 16 + 36 * (5 - @as(u8, @truncate(cursor.age)));
         }
 
         fn cmp(_: void, l: @This(), r: @This()) bool {
@@ -132,16 +132,16 @@ pub fn printMaze(maze: *const Maze, opts: PrintOptions, writer: anytype) std.os.
         try printXHeadings(writer, maze.max_x, max_y_len);
     }
 
-    for (maze.lines.items) |line, col| {
+    for (maze.lines.items, 0..) |line, col| {
         indices.clearRetainingCapacity();
 
         for (opts.minotaurs) |minotaur| {
-            for (minotaur.positions) |pos, i| {
+            for (minotaur.positions, 0..) |pos, i| {
                 if (1 <= i and !opts.tails) break;
                 if (pos.y != col) continue;
 
                 indices.append(.{
-                    .idx = @intCast(usize, pos.x),
+                    .idx = @as(usize, @intCast(pos.x)),
                     .age = i,
                     .id = minotaur.colour,
                 }) catch unreachable;
@@ -157,8 +157,8 @@ pub fn printMaze(maze: *const Maze, opts: PrintOptions, writer: anytype) std.os.
             continue;
         }
 
-        std.sort.sort(Cursor, indices.items, {}, Cursor.cmp);
-        for (utils.range(indices.items.len)) |_, i| {
+        std.mem.sort(Cursor, indices.items, {}, Cursor.cmp);
+        for (utils.range(indices.items.len), 0..) |_, i| {
             const index = indices.items[i];
             if (i != 0 and index.idx == indices.items[i - 1].idx)
                 continue;
