@@ -1,7 +1,16 @@
 # Labyrinth
 This is my 2d array-programing langauge. It's a WIP.
 
-Your "Minotaur" starts at the upper-left corner of the program `(0,0)` with an initial velocity of one to the right. At the beginning of "round," every minotaur goesmy
+Your "Minotaur" starts at the upper-left corner of the program `(0,0)` with an initial velocity of one to the right. At the beginning of "round," every minotaur steps forward and does something
+
+
+# Building
+Built using zig 0.13.0. Zig is somewhat unstable, so it (hopefuly) will work on newer version.
+
+```
+$ zig build
+$ ./zig-out/bin/labyrinth -e '"hello world"-P-Q'
+```
 
 ## Commands
 #### Movement
