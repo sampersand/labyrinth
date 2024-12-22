@@ -42,9 +42,9 @@ pub const Function = enum(u8) {
     // Minotaur functions
     moveh  = '-', // If moving horizontally, no-op; else go left and spawn a minotaur going right.
     movev  = '|', // If moving vertically, no-op; else go left and spawn a minotaur going right.
-    spawnl = 'M', // Spawn a minotaur going left.
-    spawnr = 'm', // Spawn a minotaur going right.
-    slay1 = 'F', // todo
+    spawnl = 'O', // Spawn a minotaur going left.
+    spawnr = 'o', // Spawn a minotaur going right.
+    slay1  = 'F', // todo
     // slay = 'f', // todo
     branchl = 'B',
     branchr = 'b',
@@ -53,15 +53,17 @@ pub const Function = enum(u8) {
     travelq = '`',
 
     // Movement Functions
-    right    = '>', // Set velocity to 1 unit rightwards.
-    left     = '<', // Set velocity to 1 unit leftwards.
-    up       = '^', // Set velocity to 1 unit upwards.
-    down     = 'v', // Set velocity to 1 unit downwards.
-    speedup  = '{', // Increase velocity by 1.
-    slowdown = '}', // Decrease velocity by 1.
-    jump1    = 'J', // Skip the next square.
-    jump     = 'j', // Skip the next n squares.
-    randdir  = 'R', // Move in a random direction.
+    right         = '>', // Set velocity to 1 unit rightwards.
+    left          = '<', // Set velocity to 1 unit leftwards.
+    up            = '^', // Set velocity to 1 unit upwards.
+    down          = 'v', // Set velocity to 1 unit downwards.
+    speedup       = '{', // Increase velocity by 1.
+    slowdown      = '}', // Decrease velocity by 1.
+    jump1         = 'J', // Skip the next square.
+    jump          = 'j', // Skip the next n squares.
+    randdir       = 'R', // Move in a random direction.
+    x_to_neg1     = '\\',// move in a `^>` and `<v`
+    neg_x_to_neg1 = '/', // move in a `<^` and `v>` pattern
 
     // Conditional Movement.
     ifr         = '?', // If the top element is falsey, turn right.
@@ -85,8 +87,8 @@ pub const Function = enum(u8) {
     add  = '+', // Add the top two elements.
     sub  = '_', // Subtract the topmost element from the 2nd-to-top element. (`-` is already used)
     mul  = '*', // Multiply the top two elements.
-    div  = '/', // Divide the 2nd-to-top element by the topmost.
-    mod  = '%', // Modulo the 2nd-to-top element by the topmost.
+    div  = '%', // Divide the 2nd-to-top element by the topmost.
+    mod  = 'm', // Modulo the 2nd-to-top element by the topmost.
     rand = 'r', // Push a random integer.
 
     // Logic
@@ -138,6 +140,7 @@ pub const Function = enum(u8) {
             .dup1, .dup2, .pop2, .swap, .stacklen, .getcolour, .branchl, .branchr, .branch => 0,
             .moveh, .movev, .up, .down, .left, .right, .speedup, .slowdown, .sleep1 => 0,
             .dump, .dumpq, .quit0, .gets, .str, .jump1, .randdir, .rand, .spawnl, .spawnr => 0,
+            .rotl, .rotr => 0,
 
             .pop1, .dup, .pop, .not, .chr, .ord, .tos, .toi, .inc, .dec, .neg => 1,
             .ifl, .ifr, .ifpop, .ifjump1, .unlessjump1, .jump, .quit, .len => 1,

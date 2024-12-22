@@ -329,6 +329,13 @@ fn tickFunction(minotaur: *Minotaur, labyrinth: *Labyrinth, function: Function) 
         .jump1 => try minotaur.advance(),
         .jump => try minotaur.jumpn(minotaur.args[0]),
         .randdir => minotaur.velocity = randomVelocity(&labyrinth.rng),
+        .x_to_neg1 => minotaur.velocity = .{ .x = minotaur.velocity.x}
+            if minotaur.velocity.x == 1 {
+                minotaur.velocity.rotate(.right)
+            }
+            minotaur.velocity = minotaur.velocity.rotate(.right),
+        }
+        .neg_x_to_neg1 => minotaur.velocity = minotaur.velocity.rotate(.left),
 
         .get_at => {
             const x = try castInt(u32, try minotaur.args[0].toInt());
